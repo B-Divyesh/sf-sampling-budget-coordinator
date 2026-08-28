@@ -56,6 +56,43 @@ test("legal pages render with one main heading", async ({ page }) => {
   }
 });
 
+test("skip links move keyboard focus to main content", async ({ page }) => {
+  for (const path of ["/", "/privacy/", "/terms/"]) {
+    await page.goto(path);
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("main")).toBeFocused();
+  }
+});
+
+test("a new service worker discards an old shell cache", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "service-worker upgrade is covered once in Chromium");
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const oldCache = "sbc-shell-previous-release";
+  await page.goto("/");
+  await page.evaluate(() => navigator.serviceWorker.register("/sw-previous-test.js"));
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.endsWith("/sw-previous-test.js"));
+  await expect
+    .poll(() => page.evaluate(async (name) => (await caches.keys()).includes(name), oldCache))
+    .toBe(true);
+
+  await page.evaluate(async () => {
+    const changed = new Promise<void>((resolve) =>
+      navigator.serviceWorker.addEventListener("controllerchange", () => resolve(), { once: true })
+    );
+    await navigator.serviceWorker.register("/sw.js");
+    await changed;
+  });
+  await expect
+    .poll(() => page.evaluate(async (name) => (await caches.keys()).includes(name), oldCache))
+    .toBe(false);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One budget. Every collector.");
+  await context.close();
+});
+
 test("390px layout does not overflow", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "mobile-only layout assertion");
   await page.goto("/");

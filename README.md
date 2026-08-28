@@ -2,7 +2,7 @@
 
 Sampling Budget Coordinator (`sbc`) audits OpenTelemetry collector sampling economics before deployment. It is for platform engineers who need one fleet-wide span budget even while collector replica counts change.
 
-It reads collector YAML only. It never reads traces, span attributes, credentials, or customer identifiers; it has no telemetry and makes no network requests.
+It parses the collector YAML you select locally to inspect the configured traces pipeline. Collector configuration can contain endpoints, headers, identifiers, or credentials outside that pipeline; `sbc` does not transmit, persist, or log configuration contents. It does not read trace payloads or span attributes, has no telemetry, and makes no network requests.
 
 ## Install
 

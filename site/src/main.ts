@@ -18,6 +18,19 @@ const copyButton = byId<HTMLButtonElement>("copy-command");
 const themeButton = byId<HTMLButtonElement>("theme-toggle");
 const offline = byId<HTMLElement>("offline-status");
 
+function enableSkipLinkFocus(): void {
+  document.querySelectorAll<HTMLAnchorElement>('a.skip-link[href^="#"]').forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const target = document.querySelector<HTMLElement>(link.hash);
+      if (!target) return;
+      event.preventDefault();
+      window.history.pushState(null, "", link.hash);
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  });
+}
+
 type Values = {
   budget: number;
   goal: number;
@@ -138,6 +151,7 @@ function updateNetworkStatus(): void {
 window.addEventListener("online", updateNetworkStatus);
 window.addEventListener("offline", updateNetworkStatus);
 updateNetworkStatus();
+enableSkipLinkFocus();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
