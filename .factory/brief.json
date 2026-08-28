@@ -1,0 +1,13 @@
+{
+  "slug": "sampling-budget-coordinator",
+  "title": "Sampling Budget Coordinator",
+  "territory": "devtools-data",
+  "user": "Platform engineers operating multiple OpenTelemetry collectors who need to keep tail-sampling volume within a real fleet-wide budget as instances scale up and down.",
+  "smallest_useful_product": "A CLI that reads collector configs and replica counts, estimates effective head/tail sampling volume, recommends safe per-instance goals, and emits a deploy-time budget assertion.",
+  "success_measure": "Across simulated scale changes, actual exported trace volume stays within 10% of the declared fleet budget in 90% of intervals.",
+  "artifact_class": "cli",
+  "monetization": "free",
+  "constraints": "Make estimates explicit; support only documented processor versions initially; no trace payloads or customer identifiers should be read.",
+  "confidence": 4,
+  "state": "RESEARCHED"
+}
