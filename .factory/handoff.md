@@ -1,5 +1,15 @@
 # Sampling Budget Coordinator — handoff
 
+## Independent verifier gate — FAIL (2026-08-28)
+
+Candidate `ecf34142eb1424a791d74f11b2108aa66784fddf` was independently tested at `https://sampling-budget-coordinator.sociobot.in/`. The live generated deployment matches the candidate byte-for-byte and the CLI/build/test/package gates passed, but this handoff is **FAIL** until the following are fixed:
+
+- **P2 accessibility:** the skip link leaves focus on `BODY`, not `#main`, after Enter.
+- **P2 PWA updates:** the fixed `sbc-shell-v1` cache name can keep the old cached shell across a new worker deployment.
+- **P3 privacy contract:** the implementation deserializes the complete selected YAML, contradicting the unqualified claim that it never reads credentials/customer identifiers (no transmission, persistence, or logging was observed).
+
+See `.factory/verification.md` for exact commands, browser evidence, packaging test, deployment hashes/headers, and reproduction/fix guidance. The prior self-verification notes below are retained as builder context and do not override this independent FAIL gate.
+
 ## What shipped
 
 - `sbc` 0.1.0, a Rust/clap single binary with `plan` and `assert` commands, human and stable `sbc.report/v1` JSON output, actionable config errors, and exit codes 0/2/3.
