@@ -673,4 +673,22 @@ service:
                 .contains("not supported")
         );
     }
+
+    #[test]
+    fn recommended_goal_holds_across_one_hundred_scale_intervals() {
+        let report = plan(CONFIG, &request()).unwrap();
+        let goal = report.recommended_local_throughput_goal.unwrap();
+        let within_tolerance = (0..100)
+            .filter(|interval| {
+                let replicas = 1 + interval % report.maximum_scenario_replicas;
+                let incoming = 400.0 + f64::from(*interval) * 173.0;
+                let exported = incoming.min(goal * f64::from(replicas));
+                exported <= report.maximum_allowed_spans_per_second
+            })
+            .count();
+        assert!(
+            within_tolerance >= 90,
+            "{within_tolerance} intervals were safe"
+        );
+    }
 }
