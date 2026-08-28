@@ -8,6 +8,7 @@ repository = "https://github.com/B-Divyesh/sf-sampling-budget-coordinator"
 readme = "README.md"
 keywords = ["opentelemetry", "sampling", "observability", "cli"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = [".factory/**", "site/**", "dist/**", "package*.json", "playwright.config.ts"]
 
 [lib]
 name = "sampling_budget_coordinator"

@@ -20,7 +20,7 @@ Only state changes move. Results enter with a 180 ms upward press-sheet motion; 
 
 ## Asset plan and provenance
 
-The hero illustration is an original 3:2 ink-and-halftone image of collector nodes converging through a sampling gate into a bounded ledger. It is generated specifically for this product with `/opt/fleet/lib/gen-image.sh`, deployment `factory-image`, then cropped and converted to responsive WebP files at quality 78 (maximum 300 KB). It contains no text, logos, customer data, or third-party assets. The exact generation prompt and deployment metadata are stored beside the source during production and summarized here after generation. The small registration/crop marks are original CSS shapes.
+The hero illustration is an original 3:2 ink-and-halftone image of seven collector nodes converging through a sampling gate into a bounded ledger. It was generated on 2026-08-28 with `/opt/fleet/lib/gen-image.sh`, deployment `factory-image`, at 1536×1024 and converted to 960 px/114 KB and 640 px/45 KB responsive WebP files. The prompt specified a 1960s two-ink letterpress technical illustration in near-black, vermilion, teal, and warm cream, with no text, logos, gradients, UI, photorealism, or watermark. The exact prompt and deployment response live at `.factory/assets/fleet-ledger-source.png.json`; the retained source is `.factory/assets/fleet-ledger-source.png`. No third-party imagery was used. The small registration/crop marks and favicon are original CSS/SVG shapes.
 
 ## Why this fits
 
