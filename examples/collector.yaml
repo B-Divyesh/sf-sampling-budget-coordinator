@@ -1,0 +1,22 @@
+processors:
+  batch: {}
+  adaptive_tail_sampling:
+    trace_timeout: 30s
+    rules:
+      - name: errors
+        conditions:
+          - span.status.code == STATUS_CODE_ERROR
+        sampler:
+          type: adaptive_throughput
+          goal_throughput: 100
+      - name: default
+        sampler:
+          type: adaptive_throughput
+          goal_throughput: 500
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [adaptive_tail_sampling, batch]
+      exporters: [otlp]
