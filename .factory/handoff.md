@@ -1,6 +1,18 @@
-# Sampling Budget Coordinator — repair handoff
+# Sampling Budget Coordinator — verification handoff
 
-## Release decision
+## Independent release decision — 2026-08-30
+
+**PASS — candidate `81f92cdd2f925a4d63f51efaf9b73e7e6431ef58` is accepted at `https://sampling-budget-coordinator.sociobot.in/`.**
+
+Independent verification found no defects. Every required claim command passed from the clean candidate; `npm test`, typecheck, lint, production static build, `cargo package`, clean consumer installation, and CLI boundary/error paths passed. All 19 public files rebuilt from the candidate match live byte-for-byte. The cold first screen plainly explains the job, the platform-engineer audience, and the one-click sample action.
+
+Live desktop/mobile, keyboard/focus, reduced-motion, service-worker offline reload, self-only request/privacy, headers/cache, and axe-core checks passed. Fresh Lighthouse mobile scored 100 for Performance, Accessibility, Best Practices, and SEO (LCP 1.4 s, CLS 0, TBT 0 ms). This static/local-first product has no server-side endpoint or request allowance to test. See `.factory/verification-3.md` for exact commands and evidence.
+
+### Known gaps and next steps
+
+No release-blocking gaps. Registry publishing remains factory-owned; no publishing was performed.
+
+## Builder repair record
 
 **PASS — repaired and deployed 2026-08-30.** This repair starts from verifier report commit `07835e9d58498a90e8400d19ac0ca636bb208bab`, fixes every finding against candidate `c1475d7f48b91246d3a811ec5679f83f05a9fc96`, and preserves the Rust CLI plus static-site deployment class.
 
