@@ -82,6 +82,37 @@ fn missing_file_is_actionable_and_uses_exit_code_two() {
 }
 
 #[test]
+fn demo_runs_bundled_sample_in_a_temp_directory() {
+    let output = Command::cargo_bin("sbc")
+        .unwrap()
+        .args(["demo", "--json"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Sample files:"))
+        .get_output()
+        .clone();
+
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["schema_version"], "sbc.report/v1");
+    assert_eq!(report["maximum_scenario_replicas"], 8);
+    assert_eq!(report["recommended_local_throughput_goal"], 75.0);
+
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let directory = stderr.trim().strip_prefix("Sample files: ").unwrap();
+    assert!(
+        std::path::Path::new(directory)
+            .join("collector.yaml")
+            .is_file()
+    );
+    assert!(
+        std::path::Path::new(directory)
+            .join("report.json")
+            .is_file()
+    );
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
 fn privacy_documentation_scopes_yaml_handling_to_local_process_memory() {
     let readme = include_str!("../README.md");
     let landing = include_str!("../site/index.html");

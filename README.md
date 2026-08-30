@@ -2,7 +2,19 @@
 
 Sampling Budget Coordinator (`sbc`) audits OpenTelemetry collector sampling economics before deployment. It is for platform engineers who need one fleet-wide span budget even while collector replica counts change.
 
-It parses the collector YAML you select locally to inspect the configured traces pipeline. Collector configuration can contain endpoints, headers, identifiers, or credentials outside that pipeline; `sbc` does not transmit, persist, or log configuration contents. It does not read trace payloads or span attributes, has no telemetry, and makes no network requests.
+It parses the collector YAML you select in local process memory. Collector configuration can contain endpoints, headers, identifiers, or credentials outside the traces pipeline. `sbc` does not transmit, persist, or log configuration contents. It needs no trace payloads or span attributes and includes no telemetry or network client.
+
+## Try the sample
+
+Run the complete workflow without providing a config:
+
+```sh
+cargo run -- demo
+```
+
+`sbc demo` copies the bundled collector config into a new temporary directory, runs the same planner, saves `report.json`, and prints both paths. It never reads or writes your project data.
+
+The browser demo is available at <https://sampling-budget-coordinator.sociobot.in/demo/>. Its sample values stay in browser memory under an isolated demo mode and are never saved.
 
 ## Install
 
@@ -73,14 +85,16 @@ Unknown sampling processors and missing trace pipeline wiring are errors, not si
 Prerequisites: stable Rust and Node.js 20+.
 
 ```sh
-npm install
+npm ci
 npm test
+npm run typecheck
+npm run lint
 npm run build
 npm run build:site  # static site -> dist/site
 cargo package --allow-dirty
 ```
 
-`npm test` runs Rust unit/integration tests and site tests. The browser demo is local-only and uses the same documented formulas as the CLI. Start the docs site with `npm run dev`.
+`npm test` runs Rust unit/integration tests and desktop/mobile browser tests. The browser planner uses the same documented throughput formula as the CLI. Start the docs site with `npm run dev`.
 
 ## Deployment
 

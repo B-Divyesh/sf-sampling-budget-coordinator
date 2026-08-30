@@ -1,6 +1,11 @@
 use clap::{Args, Parser, Subcommand};
 use sampling_budget_coordinator::{BudgetStatus, PlanReport, PlanRequest, plan};
-use std::{fs, path::PathBuf, process::ExitCode};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::ExitCode,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "sbc", version, about = "Keep OpenTelemetry sampling inside one fleet-wide budget", long_about = None)]
@@ -15,6 +20,15 @@ enum Command {
     Plan(CommonArgs),
     /// Fail deployment when any scenario exceeds the budget plus tolerance.
     Assert(CommonArgs),
+    /// Run a complete audit with bundled sample data in a temporary directory.
+    Demo(DemoArgs),
+}
+
+#[derive(Debug, Args)]
+struct DemoArgs {
+    /// Emit the sample report as JSON. File locations are written to stderr.
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Debug, Args)]
@@ -44,9 +58,20 @@ struct CommonArgs {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    if let Command::Demo(args) = cli.command {
+        return match run_demo(&args) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("sbc: could not run the sample audit: {error}");
+                ExitCode::from(2)
+            }
+        };
+    }
+
     let (args, asserting) = match cli.command {
         Command::Plan(args) => (args, false),
         Command::Assert(args) => (args, true),
+        Command::Demo(_) => unreachable!("demo handled above"),
     };
     match run(&args) {
         Ok(report) => {
@@ -73,6 +98,45 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn run_demo(args: &DemoArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+    let directory = std::env::temp_dir().join(format!("sbc-demo-{}-{unique}", std::process::id()));
+    fs::create_dir(&directory)?;
+
+    let config_path = directory.join("collector.yaml");
+    fs::write(&config_path, include_str!("../examples/collector.yaml"))?;
+    let yaml = fs::read_to_string(&config_path)?;
+    let report = plan(
+        &yaml,
+        &PlanRequest {
+            budget: 600.0,
+            replicas: 3,
+            scenarios: vec![3, 5, 8],
+            input_rate: Some(12_000.0),
+            tolerance_percent: 10.0,
+        },
+    )?;
+    let report_path = directory.join("report.json");
+    fs::write(&report_path, serde_json::to_vec_pretty(&report)?)?;
+
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+        eprintln!("Sample files: {}", display_path(&directory));
+    } else {
+        println!("DEMO — bundled sample data; your files were not read\n");
+        print_human(&report, false);
+        println!();
+        println!("Sample files: {}", display_path(&directory));
+        println!("  collector.yaml  bundled input");
+        println!("  report.json     machine-readable report");
+    }
+    Ok(())
+}
+
+fn display_path(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
 }
 
 fn run(args: &CommonArgs) -> Result<PlanReport, Box<dyn std::error::Error>> {
