@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Try Sampling Budget Coordinator with an isolated OpenTelemetry collector sample." />
+    <meta name="theme-color" content="#F3EBD8" />
+    <link rel="canonical" href="https://sampling-budget-coordinator.sociobot.in/demo/" />
+    <link rel="preload" href="/assets/ibm-plex-mono-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sampling-budget-coordinator.sociobot.in/demo/" />
+    <meta property="og:title" content="Demo — Sampling Budget Coordinator" />
+    <meta property="og:description" content="Test an eight-replica OpenTelemetry sampling budget with isolated sample data." />
+    <meta property="og:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Demo — Sampling Budget Coordinator" />
+    <meta name="twitter:description" content="Test an eight-replica OpenTelemetry sampling budget with isolated sample data." />
+    <meta name="twitter:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
+    <title>Demo — Sampling Budget Coordinator</title>
+  </head>
+  <body data-demo="true">
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <p class="offline" id="offline-status" role="status" hidden>You are offline. The sample planner still works locally.</p>
+    <aside class="demo-banner" aria-label="Demo mode">
+      <strong id="demo-mode-status" aria-live="polite">Demo — sample data, nothing is saved</strong>
+      <div><button id="reset-demo" type="button">Reset demo</button><a href="/">Start for real</a></div>
+    </aside>
+    <header class="site-header">
+      <a class="wordmark" href="/" aria-label="Sampling Budget Coordinator home"><span class="wordmark-mark" aria-hidden="true">S/B</span><span>Sampling budget<br />coordinator</span></a>
+      <div class="header-actions">
+        <nav aria-label="Primary"><a href="/demo/">Demo</a><a href="#planner">Planner</a><a href="/#install">Install</a><a href="/privacy/">Privacy</a></nav>
+        <button class="theme-button" id="theme-toggle" type="button" aria-label="Use dark theme">◐</button>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section class="section demo-workspace" id="planner" aria-labelledby="page-title">
+        <div class="section-heading"><p class="folio">Sample / eight replicas</p><div><h1 id="page-title">Test a sample collector fleet</h1><p>The sample starts over budget. Set the local goal to 75 spans per second or less.</p></div></div>
+        <div class="planner-shell">
+          <form class="planner-form" id="planner-form" novalidate>
+            <div class="form-row">
+              <div class="field"><label for="budget">Fleet budget <span aria-hidden="true">·</span> spans/s</label><input id="budget" name="budget" type="number" min="0.01" step="any" value="600" aria-describedby="form-error" required /></div>
+              <div class="field"><label for="goal">Configured local goal <span aria-hidden="true">·</span> spans/s</label><input id="goal" name="goal" type="number" min="0.01" step="any" value="600" aria-describedby="form-error" required /></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label for="replicas">Current replicas</label><input id="replicas" name="replicas" type="number" min="1" step="1" value="3" aria-describedby="form-error" required /></div>
+              <div class="field"><label for="peak">Peak replicas</label><input id="peak" name="peak" type="number" min="1" step="1" value="8" aria-describedby="form-error" required /></div>
+            </div>
+            <div class="field"><label for="input">Incoming volume <span aria-hidden="true">·</span> spans/s</label><input id="input" name="input" type="number" min="0" step="any" value="12000" aria-describedby="input-help form-error" required /><small id="input-help">Before the adaptive tail sampler.</small></div>
+            <div class="field"><label for="tolerance">Allowed overage <span aria-hidden="true">·</span> percent</label><input id="tolerance" name="tolerance" type="number" min="0" max="100" step="any" value="10" aria-describedby="form-error" required /></div>
+            <p class="form-error" id="form-error" role="alert"></p>
+            <button class="primary-button" type="submit">Recalculate budget</button>
+          </form>
+
+          <section class="result" id="planner-result" aria-labelledby="result-title" aria-live="polite">
+            <div class="result-top"><h2 id="result-title">Fleet ledger</h2><span class="status" id="result-status">Over budget</span></div>
+            <p class="result-label">Safe per-instance goal at peak</p>
+            <p class="result-number"><output id="recommended-goal">75</output> <span>spans/s</span></p>
+            <div class="meter" role="img" aria-label="Peak estimated export"><div class="meter-fill over" id="meter-fill"></div><span class="meter-marker" aria-hidden="true"></span></div>
+            <div class="meter-legend"><span>0%</span><span>budget + 10%</span></div>
+            <table class="ledger"><thead><tr><th scope="col">Replicas</th><th scope="col">Fleet cap</th><th scope="col">Est. export</th><th scope="col">State</th></tr></thead><tbody id="ledger-body"></tbody></table>
+            <p class="result-label">Deploy assertion</p>
+            <div class="command-wrap"><textarea class="command" id="assertion-command" readonly aria-label="Generated CLI assertion"></textarea><button class="copy-button" id="copy-command" type="button">Copy</button></div>
+            <p class="method-note">Assumes steady input and an even load balance. The CLI reports more config-specific assumptions.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer"><span>Sampling budget checks for OpenTelemetry fleets.</span><nav class="footer-links" aria-label="Footer"><a href="/">Home</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav><span>Built by Param Factory · v0.1.0</span></footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

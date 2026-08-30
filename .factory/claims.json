@@ -1,0 +1,51 @@
+[
+  {
+    "id": "demo-sandbox",
+    "claim": "The browser and CLI demos use bundled sample data without saving to real project or browser storage.",
+    "where": "landing action, demo banner, README",
+    "test": "npm run test:claim -- @claim:demo-sandbox",
+    "sandbox": "fresh browser context and temporary CLI process; mutate/reset the sample, assert empty browser storage, and inspect the CLI-created temporary files"
+  },
+  {
+    "id": "local-privacy",
+    "claim": "The site has no accounts, analytics, ads, cookies, saved planner values, or third-party requests; the CLI keeps selected configuration local and does not log it.",
+    "where": "landing facts, planner, README, privacy",
+    "test": "npm run test:claim -- @claim:local-privacy",
+    "sandbox": "capture every browser request during the demo and run the CLI with a sentinel secret; assert same-origin requests, empty storage, unchanged fixture files, and no sentinel in output"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "The browser planner works offline after the first visit.",
+    "where": "landing facts, offline status, demo documentation",
+    "test": "npm run test:claim -- @claim:offline-reload",
+    "sandbox": "fresh browser context; load /demo/ online, confirm the installed worker controls a reload, set the context offline, reload again, and recalculate"
+  },
+  {
+    "id": "sample-budget",
+    "claim": "The bundled sample reports 1,800, 3,000, and 4,800 spans/s and recommends a 75 spans/s local goal.",
+    "where": "browser demo, terminal transcript, README usage",
+    "test": "npm run test:claim -- @claim:sample-budget",
+    "sandbox": "fresh demo page plus sbc demo --json; compare the visible ledger and CLI report to the declared sample values"
+  },
+  {
+    "id": "deploy-assertion",
+    "claim": "CLI assertions return stable exit codes 0, 2, and 3 and can emit valid JSON.",
+    "where": "landing method and README usage",
+    "test": "npm run test:claim -- @claim:deploy-assertion",
+    "sandbox": "run the packaged command against bundled and invalid inputs; assert exact exit codes and parse stdout JSON"
+  },
+  {
+    "id": "unsupported-policy",
+    "claim": "Unknown sampling processors are rejected instead of estimated.",
+    "where": "landing method and README supported configuration surface",
+    "test": "npm run test:claim -- @claim:unsupported-policy",
+    "sandbox": "temporary collector config containing an unsupported sampling processor; assert exit 2 and an actionable error"
+  },
+  {
+    "id": "mit-license",
+    "claim": "Sampling Budget Coordinator is free under the MIT License.",
+    "where": "landing facts, README, terms",
+    "test": "npm run test:claim -- @claim:mit-license",
+    "sandbox": "fresh demo page plus repository LICENSE; assert the visible claim and MIT grant"
+  }
+]

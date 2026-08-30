@@ -10,7 +10,10 @@
     "preview": "vite preview --config site/vite.config.ts",
     "test": "npm run test:cli && npm run test:site",
     "test:cli": "cargo fmt --check && cargo test",
-    "test:site": "SBC_TESTING=1 npm run build:site && playwright test"
+    "test:site": "SBC_TESTING=1 npm run build:site && playwright test",
+    "test:claim": "cargo build --locked && SBC_TESTING=1 npm run build:site && playwright test --grep",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

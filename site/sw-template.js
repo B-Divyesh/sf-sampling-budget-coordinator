@@ -1,8 +1,11 @@
 const CACHE = "__SBC_CACHE_NAME__";
-const SHELL = ["/", "/privacy/", "/terms/", "/assets/fleet-ledger-640.webp", "/assets/fleet-ledger-960.webp"];
+const SHELL = __SBC_SHELL__;
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  // Force full responses into Cache Storage. Without `reload`, Chromium can
+  // satisfy install fetches with conditional 304 responses that have no body.
+  const requests = SHELL.map((path) => new Request(path, { cache: "reload" }));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(requests)));
   self.skipWaiting();
 });
 
@@ -13,10 +16,9 @@ self.addEventListener("activate", (event) => {
         keys
           .filter((key) => key.startsWith("sbc-shell-") && key !== CACHE)
           .map((key) => caches.delete(key))
-      )
+      ).then(() => self.clients.claim())
     )
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {

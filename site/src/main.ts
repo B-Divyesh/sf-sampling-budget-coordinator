@@ -1,5 +1,3 @@
-import "./style.css";
-
 const byId = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing required element #${id}`);
@@ -17,6 +15,17 @@ const command = byId<HTMLTextAreaElement>("assertion-command");
 const copyButton = byId<HTMLButtonElement>("copy-command");
 const themeButton = byId<HTMLButtonElement>("theme-toggle");
 const offline = byId<HTMLElement>("offline-status");
+const resetDemo = document.getElementById("reset-demo") as HTMLButtonElement | null;
+const demoModeStatus = document.getElementById("demo-mode-status");
+
+const sampleValues = {
+  budget: "600",
+  goal: "600",
+  replicas: "3",
+  peak: "8",
+  input: "12000",
+  tolerance: "10"
+} as const;
 
 function enableSkipLinkFocus(): void {
   document.querySelectorAll<HTMLAnchorElement>('a.skip-link[href^="#"]').forEach((link) => {
@@ -124,6 +133,18 @@ form.addEventListener("submit", (event) => {
   if (values) calculate(values);
 });
 
+resetDemo?.addEventListener("click", () => {
+  for (const [name, value] of Object.entries(sampleValues)) {
+    const field = form.elements.namedItem(name) as HTMLInputElement;
+    field.value = value;
+    field.removeAttribute("aria-invalid");
+  }
+  error.textContent = "";
+  calculate(readValues()!);
+  if (demoModeStatus) demoModeStatus.textContent = "Demo reset — sample data, nothing is saved";
+  resetDemo.focus();
+});
+
 copyButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(command.value);
@@ -158,3 +179,4 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 }
 
 calculate(readValues()!);
+document.documentElement.dataset.appReady = "true";

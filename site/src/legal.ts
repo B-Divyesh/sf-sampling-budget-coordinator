@@ -1,5 +1,3 @@
-import "./style.css";
-
 document.querySelectorAll<HTMLAnchorElement>('a.skip-link[href^="#"]').forEach((link) => {
   link.addEventListener("click", (event) => {
     const target = document.querySelector<HTMLElement>(link.hash);

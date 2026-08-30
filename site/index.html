@@ -3,11 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Audit OpenTelemetry tail-sampling goals against one fleet-wide span budget before autoscaling multiplies your bill." />
+    <meta name="description" content="Set safe per-instance OpenTelemetry sampling goals and block deployments that exceed one fleet budget." />
     <meta name="theme-color" content="#F3EBD8" />
+    <link rel="canonical" href="https://sampling-budget-coordinator.sociobot.in/" />
     <link rel="preload" href="/assets/ibm-plex-mono-latin-600.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>Sampling Budget Coordinator — fleet-wide OpenTelemetry budget checks</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sampling-budget-coordinator.sociobot.in/" />
+    <meta property="og:title" content="Sampling Budget Coordinator — Check OTel Budgets" />
+    <meta property="og:description" content="Set safe per-instance OpenTelemetry sampling goals before replicas change." />
+    <meta property="og:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sampling Budget Coordinator — Check OTel Budgets" />
+    <meta name="twitter:description" content="Set safe per-instance OpenTelemetry sampling goals before replicas change." />
+    <meta name="twitter:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
+    <title>Sampling Budget Coordinator — Check OTel Budgets</title>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
@@ -15,7 +29,7 @@
     <header class="site-header">
       <a class="wordmark" href="/" aria-label="Sampling Budget Coordinator home"><span class="wordmark-mark" aria-hidden="true">S/B</span><span>Sampling budget<br />coordinator</span></a>
       <div class="header-actions">
-        <nav aria-label="Primary"><a href="#planner">Planner</a><a href="#install">Install</a></nav>
+        <nav aria-label="Primary"><a href="/demo/">Demo</a><a href="#planner">Planner</a><a href="#install">Install</a><a href="/privacy/">Privacy</a></nav>
         <button class="theme-button" id="theme-toggle" type="button" aria-label="Use dark theme">◐</button>
       </div>
     </header>
@@ -24,33 +38,34 @@
       <section class="hero" aria-labelledby="page-title">
         <div class="hero-copy">
           <p class="eyebrow">OpenTelemetry / pre-deploy audit</p>
-          <h1 id="page-title">One budget. Every collector.</h1>
-          <p>Autoscaling should not multiply your tail-sampling bill. Read the config, model the fleet, and fail a deploy before the exported span volume escapes its limit.</p>
-          <div class="hero-actions"><a class="primary-link" href="#planner">Check a fleet</a><a class="text-link" href="#install">Install the CLI ↓</a></div>
+          <h1 id="page-title">Keep collector sampling within budget</h1>
+          <p>For platform engineers managing OpenTelemetry fleets, it sets safe per-instance goals before replicas change.</p>
+          <div class="hero-actions"><a class="primary-link" href="/demo/">Try it with sample data</a><span class="action-note">Loads an isolated eight-replica fleet.</span></div>
+          <ul class="plain-facts" aria-label="Product facts"><li>No planner data is saved or sent.</li><li>Works offline after the first visit.</li><li>Free under the MIT License.</li></ul>
         </div>
         <figure class="hero-art">
           <picture>
             <source media="(max-width: 640px)" srcset="/assets/fleet-ledger-640.webp" />
             <img src="/assets/fleet-ledger-960.webp" width="960" height="640" fetchpriority="high" alt="Seven collector nodes send dithered signals through one mechanical gate into a bound ledger." />
           </picture>
-          <figcaption>Plate 01 / local goals accumulate at fleet scale</figcaption>
+          <figcaption>Local sampling goals accumulate at fleet scale.</figcaption>
         </figure>
       </section>
 
       <section class="section" id="planner" aria-labelledby="planner-title">
-        <div class="section-heading"><p class="folio">01 / proof press</p><div><h2 id="planner-title">Test the scale change</h2><p>This browser model uses the CLI’s throughput formula. Values stay on this device and are not saved.</p></div></div>
+        <div class="section-heading"><p class="folio">01 / calculator</p><div><h2 id="planner-title">Test the scale change</h2><p>This planner uses the CLI throughput formula. It keeps values in browser memory until you close the page.</p></div></div>
         <div class="planner-shell">
           <form class="planner-form" id="planner-form" novalidate>
             <div class="form-row">
-              <div class="field"><label for="budget">Fleet budget <span aria-hidden="true">·</span> spans/s</label><input id="budget" name="budget" type="number" min="0.01" step="any" value="600" required /></div>
-              <div class="field"><label for="goal">Configured local goal <span aria-hidden="true">·</span> spans/s</label><input id="goal" name="goal" type="number" min="0.01" step="any" value="600" required /></div>
+              <div class="field"><label for="budget">Fleet budget <span aria-hidden="true">·</span> spans/s</label><input id="budget" name="budget" type="number" min="0.01" step="any" value="600" aria-describedby="form-error" required /></div>
+              <div class="field"><label for="goal">Configured local goal <span aria-hidden="true">·</span> spans/s</label><input id="goal" name="goal" type="number" min="0.01" step="any" value="600" aria-describedby="form-error" required /></div>
             </div>
             <div class="form-row">
-              <div class="field"><label for="replicas">Current replicas</label><input id="replicas" name="replicas" type="number" min="1" step="1" value="3" required /></div>
-              <div class="field"><label for="peak">Peak replicas</label><input id="peak" name="peak" type="number" min="1" step="1" value="8" required /></div>
+              <div class="field"><label for="replicas">Current replicas</label><input id="replicas" name="replicas" type="number" min="1" step="1" value="3" aria-describedby="form-error" required /></div>
+              <div class="field"><label for="peak">Peak replicas</label><input id="peak" name="peak" type="number" min="1" step="1" value="8" aria-describedby="form-error" required /></div>
             </div>
-            <div class="field"><label for="input">Incoming volume <span aria-hidden="true">·</span> spans/s</label><input id="input" name="input" type="number" min="0" step="any" value="12000" required /><small>Before the adaptive tail sampler.</small></div>
-            <div class="field"><label for="tolerance">Allowed overage <span aria-hidden="true">·</span> percent</label><input id="tolerance" name="tolerance" type="number" min="0" max="100" step="any" value="10" required /></div>
+            <div class="field"><label for="input">Incoming volume <span aria-hidden="true">·</span> spans/s</label><input id="input" name="input" type="number" min="0" step="any" value="12000" aria-describedby="input-help form-error" required /><small id="input-help">Before the adaptive tail sampler.</small></div>
+            <div class="field"><label for="tolerance">Allowed overage <span aria-hidden="true">·</span> percent</label><input id="tolerance" name="tolerance" type="number" min="0" max="100" step="any" value="10" aria-describedby="form-error" required /></div>
             <p class="form-error" id="form-error" role="alert"></p>
             <button class="primary-button" type="submit">Recalculate budget</button>
           </form>
@@ -70,17 +85,33 @@
       </section>
 
       <section class="section" aria-labelledby="method-title">
-        <div class="section-heading"><p class="folio">02 / method</p><div><h2 id="method-title">Budget math you can audit</h2><p>No trace payloads and no mystery model. The report distinguishes per-replica throughput goals from fleet-safe percentage policies.</p></div></div>
+        <div class="section-heading"><p class="folio">02 / method</p><div><h2 id="method-title">Budget math you can audit</h2><p>The CLI needs a collector config, not trace data. It distinguishes per-replica goals from fleet-safe percentage policies.</p></div></div>
         <div class="steps">
           <article class="step"><span class="step-number">A / READ</span><h3>Follow the traces pipeline</h3><p>The CLI audits referenced processors and rejects unsupported sampling policies rather than making a quiet guess.</p></article>
           <article class="step"><span class="step-number">B / MODEL</span><h3>Multiply where OTel does</h3><p>Local adaptive-throughput goals scale with replicas. Probabilistic and adaptive-percentage rates stay fractions of the load-balanced input.</p></article>
-          <article class="step"><span class="step-number">C / ASSERT</span><h3>Make overage fail loudly</h3><p>Every scale scenario is checked against the budget plus tolerance. Exit code 3 blocks the deploy; JSON feeds the rest of CI.</p></article>
+          <article class="step"><span class="step-number">C / ASSERT</span><h3>Stop an over-budget deploy</h3><p>Each scenario is checked against budget plus tolerance. Exit code 3 marks an over-budget assertion; JSON feeds CI.</p></article>
         </div>
       </section>
 
       <section class="section" id="install" aria-labelledby="install-title">
-        <div class="section-heading"><p class="folio">03 / install</p><div><h2 id="install-title">Put the ledger in CI</h2><p>A single Rust binary, zero runtime services, stable exit codes. Start with the example config in the repository.</p></div></div>
+        <div class="section-heading"><p class="folio">03 / install</p><div><h2 id="install-title">Put the check in CI</h2><p>Build the Rust binary, run the bundled demo, then add the assertion to your deployment.</p></div></div>
+        <figure class="terminal-recording" aria-labelledby="terminal-title"><figcaption id="terminal-title">Recorded terminal run with the bundled sample</figcaption><div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span><b>sbc demo</b></div><pre tabindex="0"><code>$ sbc demo
+DEMO — bundled sample data; your files were not read
+
+SAMPLING BUDGET COORDINATOR  OVER BUDGET
+Budget         600.00 spans/s (+10.0% tolerance)
+Allowed        660.00 spans/s
+
+REPLICAS   EST. EXPORT   UTILIZATION   RESULT
+       3       1800.00        300.0%   over
+       5       3000.00        500.0%   over
+       8       4800.00        800.0%   over
+
+RECOMMENDED LOCAL GOAL   75.00 spans/s per instance
+Sample files: /tmp/sbc-demo-&lt;run-id&gt;</code></pre></figure>
         <div class="code-panel" tabindex="0" aria-label="Scrollable installation command"><div class="bar">Shell / build and audit</div><pre><code>cargo install --git https://github.com/B-Divyesh/sf-sampling-budget-coordinator
+
+sbc demo
 
 sbc plan --config collector.yaml \
   --budget 600 --replicas 3 \
@@ -92,7 +123,7 @@ sbc assert --config collector.yaml \
       </section>
     </main>
 
-    <footer class="site-footer"><span>Sampling Budget Coordinator · MIT · no telemetry</span><nav class="footer-links" aria-label="Footer"><a href="https://github.com/B-Divyesh/sf-sampling-budget-coordinator">Source</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav></footer>
+    <footer class="site-footer"><span>Sampling budget checks for OpenTelemetry fleets.</span><nav class="footer-links" aria-label="Footer"><a href="https://github.com/B-Divyesh/sf-sampling-budget-coordinator">Source on GitHub ↗</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav><span>Built by Param Factory · v0.1.0</span></footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

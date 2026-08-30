@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 test("planner recalculates the fleet and generates an assertion", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Sampling Budget Coordinator/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One budget. Every collector.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep collector sampling within budget");
   await expect(page.getByText("Over budget", { exact: true })).toBeVisible();
   await page.getByLabel(/Configured local goal/).fill("60");
   await page.getByRole("button", { name: "Recalculate budget" }).click();
@@ -20,10 +20,12 @@ test("invalid planner input explains the correction", async ({ page }) => {
   await expect(page.getByLabel("Peak replicas")).toHaveAttribute("aria-invalid", "true");
 });
 
-test("main page has no serious accessibility violations", async ({ page }) => {
-  await page.goto("/");
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
+test("every route has no serious accessibility violations", async ({ page }) => {
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")), path).toEqual([]);
+  }
 });
 
 test("dark treatment remains accessible and load is error-free", async ({ page }) => {
@@ -56,14 +58,74 @@ test("legal pages render with one main heading", async ({ page }) => {
   }
 });
 
+test("first screen names the job, audience, sample action, and three facts", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep collector sampling within budget");
+  await expect(page.getByText(/For platform engineers managing OpenTelemetry fleets/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Try it with sample data" })).toHaveAttribute("href", "/demo/");
+  await expect(page.locator(".plain-facts li")).toHaveCount(3);
+});
+
+test("demo route starts in the used product and exposes its sandbox controls", async ({ page }) => {
+  await page.goto("/demo/");
+  await expect(page).toHaveTitle("Demo — Sampling Budget Coordinator");
+  await expect(page.getByRole("complementary", { name: "Demo mode" })).toContainText("nothing is saved");
+  await expect(page.getByText("Over budget", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset demo" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start for real" })).toHaveAttribute("href", "/");
+});
+
+test("all public pages include route metadata and the product 404", async ({ page }) => {
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /social-card\.webp$/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  }
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("This page is not in the plan");
+  await expect(page.getByRole("link", { name: "Open the planner" })).toHaveAttribute("href", "/");
+  const imageSize = await page.evaluate(async () => {
+    const image = new Image();
+    image.src = "/assets/social-card.webp";
+    await image.decode();
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  });
+  expect(imageSize).toEqual({ width: 1200, height: 630 });
+});
+
+test("landing includes a self-hosted terminal transcript", async ({ page }) => {
+  await page.goto("/");
+  const recording = page.locator(".terminal-recording");
+  await expect(recording).toContainText("$ sbc demo");
+  await expect(recording).toContainText("RECOMMENDED LOCAL GOAL   75.00 spans/s per instance");
+});
+
 test("skip links move keyboard focus to main content", async ({ page }) => {
-  for (const path of ["/", "/privacy/", "/terms/"]) {
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
     await page.goto(path);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.locator("main")).toBeFocused();
   }
+});
+
+test("demo controls work with the keyboard and keep focus visible", async ({ page }) => {
+  await page.goto("/demo/");
+  await page.getByLabel(/Configured local goal/).focus();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type("60");
+  await page.getByRole("button", { name: "Recalculate budget" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Within budget", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reset demo" }).focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByLabel(/Configured local goal/)).toHaveValue("600");
+  await expect(page.getByRole("button", { name: "Reset demo" })).toBeFocused();
+  const outline = await page.getByRole("button", { name: "Reset demo" }).evaluate((element) => getComputedStyle(element).outlineStyle);
+  expect(outline).not.toBe("none");
 });
 
 test("a new service worker discards an old shell cache", async ({ browser }, testInfo) => {
@@ -89,14 +151,27 @@ test("a new service worker discards an old shell cache", async ({ browser }, tes
     .poll(() => page.evaluate(async (name) => (await caches.keys()).includes(name), oldCache))
     .toBe(false);
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One budget. Every collector.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep collector sampling within budget");
   await context.close();
 });
 
 test("390px layout does not overflow", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "mobile-only layout assertion");
-  await page.goto("/");
-  const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
-  expect(widths.scroll).toBeLessThanOrEqual(widths.client);
-  await expect(page.getByRole("button", { name: "Recalculate budget" })).toBeVisible();
+  for (const path of ["/", "/demo/"]) {
+    await page.goto(path);
+    const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(widths.scroll, path).toBeLessThanOrEqual(widths.client);
+    await expect(page.getByRole("button", { name: "Recalculate budget" })).toBeVisible();
+  }
+});
+
+test("200 percent text size preserves the mobile layout", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "mobile text-resize assertion");
+  for (const path of ["/", "/demo/"]) {
+    await page.goto(path);
+    await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+    const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(widths.scroll, path).toBeLessThanOrEqual(widths.client);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  }
 });
