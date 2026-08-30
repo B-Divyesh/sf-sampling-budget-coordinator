@@ -28,16 +28,18 @@ test("every route has no serious accessibility violations", async ({ page }) => 
   }
 });
 
-test("dark treatment remains accessible and load is error-free", async ({ page }) => {
+test("dark treatment stays accessible on every route and loads without errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (exception) => errors.push(exception.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  await page.goto("/");
-  await page.getByRole("button", { name: "Use dark theme" }).click();
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    await page.getByRole("button", { name: "Use dark theme" }).click();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")), path).toEqual([]);
+  }
   expect(errors).toEqual([]);
 });
 
