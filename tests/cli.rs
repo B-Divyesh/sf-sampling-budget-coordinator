@@ -84,13 +84,20 @@ fn missing_file_is_actionable_and_uses_exit_code_two() {
 #[test]
 fn privacy_documentation_scopes_yaml_handling_to_local_process_memory() {
     let readme = include_str!("../README.md");
+    let landing = include_str!("../site/index.html");
+    let privacy = include_str!("../site/privacy/index.html");
     assert!(readme.contains("does not transmit, persist, or log configuration contents"));
     assert!(
         readme
             .contains("configuration can contain endpoints, headers, identifiers, or credentials")
     );
-    assert!(
-        !readme
-            .contains("never reads traces, span attributes, credentials, or customer identifiers")
-    );
+    assert!(privacy.contains("can contain endpoints, headers, identifiers, or credentials"));
+    for public_copy in [readme, landing, privacy] {
+        assert!(
+            !public_copy.contains(
+                "never reads traces, span attributes, credentials, or customer identifiers"
+            )
+        );
+        assert!(!public_copy.contains("reads only referenced processors"));
+    }
 }
