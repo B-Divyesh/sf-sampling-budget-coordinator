@@ -11,7 +11,10 @@
 //!   adaptive_tail_sampling:
 //!     rules:
 //!       - name: default
-//!         sampler: { type: adaptive_throughput, goal_throughput: 100 }
+//!         sampler:
+//!           type: adaptive_throughput
+//!           goal_throughput: 100
+//!           fingerprint_attributes: ['resource.attributes["service.name"]']
 //! service:
 //!   pipelines:
 //!     traces: { processors: [adaptive_tail_sampling] }
@@ -233,41 +236,28 @@ pub fn plan(yaml: &str, request: &PlanRequest) -> Result<PlanReport, Coordinator
     let configured_local_goal = if throughput_rules.is_empty() {
         None
     } else {
-        Some(throughput_rules.iter().map(|(_, rule, _)| rule.goal).sum())
+        Some(checked_sum(
+            throughput_rules.iter().map(|(_, rule, _)| rule.goal),
+            "configured throughput goals",
+        )?)
     };
-    let all_global =
-        !throughput_rules.is_empty() && throughput_rules.iter().all(|(_, _, global)| *global);
-    let recommended_local_goal = if throughput_rules.is_empty() || all_global {
-        None
-    } else {
-        Some(request.budget / f64::from(max_replicas))
-    };
-    let total_goal: f64 = throughput_rules.iter().map(|(_, rule, _)| rule.goal).sum();
-    let recommendations = throughput_rules
-        .iter()
-        .filter(|(_, _, global)| !*global)
-        .map(|(processor, rule, _)| Recommendation {
-            processor: (*processor).clone(),
-            rule: rule.name.clone(),
-            configured_goal_throughput: rule.goal,
-            recommended_goal_throughput: if total_goal > 0.0 {
-                request.budget / f64::from(max_replicas) * rule.goal / total_goal
-            } else {
-                0.0
-            },
-        })
-        .collect();
-
-    let maximum_allowed = request.budget * (1.0 + request.tolerance_percent / 100.0);
+    let maximum_allowed = finite_derived(
+        request.budget * (1.0 + request.tolerance_percent / 100.0),
+        "budget and tolerance produce a maximum allowed span rate",
+    )?;
     let mut scenario_results = Vec::new();
-    for replica_count in replicas {
+    for &replica_count in &replicas {
         let (estimate, configured_ceiling) =
             estimate_pipeline(&stages, request.input_rate, replica_count)?;
+        let utilization = finite_derived(
+            estimate / request.budget * 100.0,
+            "estimated export and budget produce a utilization percentage",
+        )?;
         scenario_results.push(ScenarioResult {
             replicas: replica_count,
             configured_throughput_ceiling: configured_ceiling,
             estimated_export_spans_per_second: estimate,
-            budget_utilization_percent: estimate / request.budget * 100.0,
+            budget_utilization_percent: utilization,
             status: if estimate <= maximum_allowed + f64::EPSILON {
                 BudgetStatus::WithinBudget
             } else {
@@ -284,6 +274,54 @@ pub fn plan(yaml: &str, request: &PlanRequest) -> Result<PlanReport, Coordinator
         BudgetStatus::WithinBudget
     };
 
+    let local_rules: Vec<_> = throughput_rules
+        .iter()
+        .filter(|(_, _, global)| !*global)
+        .copied()
+        .collect();
+    let local_configured_total = checked_sum(
+        local_rules.iter().map(|(_, rule, _)| rule.goal),
+        "local throughput goals",
+    )?;
+    let (recommended_local_goal, recommendations) = if local_rules.is_empty() {
+        (None, Vec::new())
+    } else {
+        match safe_local_goal(
+            &stages,
+            request.input_rate,
+            &replicas,
+            request.budget,
+            local_configured_total,
+        )? {
+            Some(goal) if goal > 0.0 => {
+                let rows = local_rules
+                    .iter()
+                    .map(|(processor, rule, _)| Recommendation {
+                        processor: (*processor).clone(),
+                        rule: rule.name.clone(),
+                        configured_goal_throughput: rule.goal,
+                        recommended_goal_throughput: goal * (rule.goal / local_configured_total),
+                    })
+                    .collect();
+                (Some(goal), rows)
+            }
+            _ => {
+                let baseline = maximum_estimate_with_local_goal(
+                    &stages,
+                    request.input_rate,
+                    &replicas,
+                    local_configured_total,
+                    0.0,
+                )?;
+                warnings.push(format!(
+                    "No positive local throughput goal can fit the declared budget: supported non-throughput rules alone estimate {baseline:.2} spans/s against {:.2} spans/s. Lower the percentage policy or increase the budget.",
+                    request.budget
+                ));
+                (None, Vec::new())
+            }
+        }
+    };
+
     let mut assumptions = vec![
         "Rates are steady-state spans per second; adjustment lag and short bursts are not simulated.".into(),
         "Incoming traffic is evenly load-balanced across collector replicas.".into(),
@@ -296,7 +334,7 @@ pub fn plan(yaml: &str, request: &PlanRequest) -> Result<PlanReport, Coordinator
         );
     }
 
-    Ok(PlanReport {
+    let report = PlanReport {
         schema_version: "sbc.report/v1",
         status,
         budget_spans_per_second: request.budget,
@@ -311,7 +349,9 @@ pub fn plan(yaml: &str, request: &PlanRequest) -> Result<PlanReport, Coordinator
         recommendations,
         assumptions,
         warnings,
-    })
+    };
+    validate_report_numbers(&report)?;
+    Ok(report)
 }
 
 fn validate_request(request: &PlanRequest) -> Result<(), CoordinatorError> {
@@ -383,6 +423,7 @@ fn parse_adaptive_tail(
                         "{name}.{rule_name}.goal_throughput must be greater than 0"
                     )));
                 }
+                validate_fingerprint_attributes(sampler, &name, &rule_name)?;
                 global_counters |= sampler.contains_key(Value::String("shared_counters".into()));
                 throughput_rules.push(ThroughputRule {
                     name: rule_name,
@@ -403,6 +444,7 @@ fn parse_adaptive_tail(
                 let pct =
                     required_number(sampler, "goal_percentage", &format!("{name}.{rule_name}"))?;
                 validate_percentage(pct, &name, &rule_name)?;
+                validate_fingerprint_attributes(sampler, &name, &rule_name)?;
                 max_fraction = max_fraction.max(pct / 100.0);
                 has_percentage = true;
             }
@@ -427,7 +469,10 @@ fn parse_adaptive_tail(
             "{name} has no supported sampler rules"
         )));
     }
-    let throughput_sum: f64 = throughput_rules.iter().map(|r| r.goal).sum();
+    let throughput_sum = checked_sum(
+        throughput_rules.iter().map(|rule| rule.goal),
+        &format!("{name} throughput goals"),
+    )?;
     let semantics = if global_counters {
         "fleet-wide shared"
     } else {
@@ -464,10 +509,139 @@ fn validate_percentage(value: f64, processor: &str, rule: &str) -> Result<(), Co
     Ok(())
 }
 
+fn validate_fingerprint_attributes(
+    sampler: &Mapping,
+    processor: &str,
+    rule: &str,
+) -> Result<(), CoordinatorError> {
+    let context = format!("{processor}.{rule}.fingerprint_attributes");
+    let attributes = sampler
+        .get(Value::String("fingerprint_attributes".into()))
+        .and_then(Value::as_sequence)
+        .filter(|attributes| !attributes.is_empty())
+        .ok_or_else(|| {
+            CoordinatorError::InvalidInput(format!(
+                "{context} must contain at least one scoped attribute selector"
+            ))
+        })?;
+
+    for attribute in attributes {
+        let selector = attribute.as_str().ok_or_else(|| {
+            CoordinatorError::InvalidInput(format!("{context} entries must be strings"))
+        })?;
+        let has_valid_scope = ["resource", "scope", "span", "root", "any"]
+            .iter()
+            .any(|scope| {
+                let prefix = format!("{scope}.attributes[\"");
+                selector
+                    .strip_prefix(&prefix)
+                    .and_then(|rest| rest.strip_suffix("\"]"))
+                    .is_some_and(|name| !name.is_empty())
+            });
+        if !has_valid_scope {
+            return Err(CoordinatorError::InvalidInput(format!(
+                "{context} entry `{selector}` must use <scope>.attributes[\"<name>\"] with scope resource, scope, span, root, or any"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn checked_sum(
+    values: impl IntoIterator<Item = f64>,
+    context: &str,
+) -> Result<f64, CoordinatorError> {
+    values
+        .into_iter()
+        .try_fold(0.0, |sum, value| finite_derived(sum + value, context))
+}
+
+fn finite_derived(value: f64, context: &str) -> Result<f64, CoordinatorError> {
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(CoordinatorError::InvalidInput(format!(
+            "{context} outside the supported numeric range; use smaller numeric inputs"
+        )))
+    }
+}
+
+fn safe_local_goal(
+    stages: &[Stage],
+    input: Option<f64>,
+    replicas: &BTreeSet<u32>,
+    budget: f64,
+    configured_local_total: f64,
+) -> Result<Option<f64>, CoordinatorError> {
+    let baseline =
+        maximum_estimate_with_local_goal(stages, input, replicas, configured_local_total, 0.0)?;
+    if baseline >= budget {
+        return Ok(None);
+    }
+
+    let max_replicas = f64::from(*replicas.iter().next_back().expect("replicas are not empty"));
+    let candidate = finite_derived(budget / max_replicas, "recommended local throughput goal")?;
+    let candidate_estimate = maximum_estimate_with_local_goal(
+        stages,
+        input,
+        replicas,
+        configured_local_total,
+        candidate,
+    )?;
+    if candidate_estimate <= budget {
+        return Ok(Some(candidate));
+    }
+
+    let (mut low, mut high) = (0.0, candidate);
+    for _ in 0..80 {
+        let midpoint = low + (high - low) / 2.0;
+        let estimate = maximum_estimate_with_local_goal(
+            stages,
+            input,
+            replicas,
+            configured_local_total,
+            midpoint,
+        )?;
+        if estimate <= budget {
+            low = midpoint;
+        } else {
+            high = midpoint;
+        }
+    }
+    Ok((low > 0.0).then_some(low))
+}
+
+fn maximum_estimate_with_local_goal(
+    stages: &[Stage],
+    input: Option<f64>,
+    replicas: &BTreeSet<u32>,
+    configured_local_total: f64,
+    replacement_local_total: f64,
+) -> Result<f64, CoordinatorError> {
+    replicas.iter().try_fold(0.0_f64, |maximum, &replicas| {
+        let (estimate, _) = estimate_pipeline_with_local_goal(
+            stages,
+            input,
+            replicas,
+            Some((configured_local_total, replacement_local_total)),
+        )?;
+        Ok(maximum.max(estimate))
+    })
+}
+
 fn estimate_pipeline(
     stages: &[Stage],
     input: Option<f64>,
     replicas: u32,
+) -> Result<(f64, Option<f64>), CoordinatorError> {
+    estimate_pipeline_with_local_goal(stages, input, replicas, None)
+}
+
+fn estimate_pipeline_with_local_goal(
+    stages: &[Stage],
+    input: Option<f64>,
+    replicas: u32,
+    local_goal: Option<(f64, f64)>,
 ) -> Result<(f64, Option<f64>), CoordinatorError> {
     let mut rate = input;
     let mut latest_ceiling = None;
@@ -483,22 +657,46 @@ fn estimate_pipeline(
                 global_counters,
                 ..
             } => {
-                let local_total: f64 = throughput_rules.iter().map(|r| r.goal).sum();
-                let ceiling = local_total
-                    * if *global_counters {
-                        1.0
-                    } else {
-                        f64::from(replicas)
-                    };
+                let stage_total = checked_sum(
+                    throughput_rules.iter().map(|rule| {
+                        if *global_counters {
+                            rule.goal
+                        } else if let Some((configured_total, replacement_total)) = local_goal {
+                            replacement_total * (rule.goal / configured_total)
+                        } else {
+                            rule.goal
+                        }
+                    }),
+                    "throughput ceiling",
+                )?;
+                let ceiling = finite_derived(
+                    stage_total
+                        * if *global_counters {
+                            1.0
+                        } else {
+                            f64::from(replicas)
+                        },
+                    "throughput ceiling",
+                )?;
                 if !throughput_rules.is_empty() {
                     latest_ceiling = Some(ceiling);
                 }
                 rate = match (rate, throughput_rules.is_empty(), *has_percentage) {
                     (Some(incoming), false, true) => {
-                        Some(incoming.min(ceiling + incoming * percentage_fraction))
+                        let percentage_volume = finite_derived(
+                            incoming * percentage_fraction,
+                            "percentage-policy estimate",
+                        )?;
+                        Some(incoming.min(finite_derived(
+                            ceiling + percentage_volume,
+                            "mixed-policy estimate",
+                        )?))
                     }
                     (Some(incoming), false, false) => Some(incoming.min(ceiling)),
-                    (Some(incoming), true, true) => Some(incoming * percentage_fraction),
+                    (Some(incoming), true, true) => Some(finite_derived(
+                        incoming * percentage_fraction,
+                        "percentage-policy estimate",
+                    )?),
                     (Some(incoming), true, false) => Some(incoming),
                     (None, false, false) => Some(ceiling),
                     (None, _, true) => None,
@@ -512,6 +710,33 @@ fn estimate_pipeline(
             "an input rate is required to estimate percentage or always-sample policies".into(),
         )
     })
+}
+
+fn validate_report_numbers(report: &PlanReport) -> Result<(), CoordinatorError> {
+    let mut values = vec![
+        report.budget_spans_per_second,
+        report.tolerance_percent,
+        report.maximum_allowed_spans_per_second,
+    ];
+    values.extend(report.configured_local_throughput_goal);
+    values.extend(report.recommended_local_throughput_goal);
+    for scenario in &report.scenarios {
+        values.extend(scenario.configured_throughput_ceiling);
+        values.push(scenario.estimated_export_spans_per_second);
+        values.push(scenario.budget_utilization_percent);
+    }
+    for recommendation in &report.recommendations {
+        values.push(recommendation.configured_goal_throughput);
+        values.push(recommendation.recommended_goal_throughput);
+    }
+    if values.into_iter().all(f64::is_finite) {
+        Ok(())
+    } else {
+        Err(CoordinatorError::InvalidInput(
+            "derived report values exceed the supported numeric range; use smaller numeric inputs"
+                .into(),
+        ))
+    }
 }
 
 fn find_trace_pipeline(pipelines: &Mapping) -> Result<&Mapping, CoordinatorError> {
@@ -587,6 +812,7 @@ processors:
         sampler:
           type: adaptive_throughput
           goal_throughput: 600
+          fingerprint_attributes: ['resource.attributes["service.name"]']
 service:
   pipelines:
     traces:
@@ -621,7 +847,7 @@ service:
     #[test]
     fn probabilistic_volume_does_not_multiply_with_replicas() {
         let config = CONFIG.replace(
-            "adaptive_tail_sampling:\n    rules:\n      - name: default\n        sampler:\n          type: adaptive_throughput\n          goal_throughput: 600",
+            "adaptive_tail_sampling:\n    rules:\n      - name: default\n        sampler:\n          type: adaptive_throughput\n          goal_throughput: 600\n          fingerprint_attributes: ['resource.attributes[\"service.name\"]']",
             "probabilistic_sampler:\n    sampling_percentage: 5",
         ).replace("adaptive_tail_sampling]", "probabilistic_sampler]");
         let mut req = request();
@@ -650,7 +876,7 @@ service:
     #[test]
     fn percentage_policy_requires_input() {
         let config = CONFIG.replace(
-            "adaptive_throughput\n          goal_throughput: 600",
+            "adaptive_throughput\n          goal_throughput: 600\n          fingerprint_attributes: ['resource.attributes[\"service.name\"]']",
             "probabilistic\n          sampling_percentage: 10",
         );
         let mut req = request();
@@ -689,6 +915,116 @@ service:
         assert!(
             within_tolerance >= 90,
             "{within_tolerance} intervals were safe"
+        );
+    }
+
+    #[test]
+    fn mixed_policy_goal_reserves_percentage_volume() {
+        let config = r#"
+processors:
+  adaptive_tail_sampling:
+    rules:
+      - name: selected-traffic
+        conditions: [tenant-is-selected]
+        sampler: { type: probabilistic, sampling_percentage: 2 }
+      - name: default
+        sampler:
+          type: adaptive_throughput
+          goal_throughput: 75
+          fingerprint_attributes: ['resource.attributes["service.name"]']
+service:
+  pipelines:
+    traces: { processors: [adaptive_tail_sampling] }
+"#;
+        let mut req = request();
+        req.replicas = 8;
+        req.scenarios = vec![3, 5, 8];
+        let report = plan(config, &req).unwrap();
+        let goal = report.recommended_local_throughput_goal.unwrap();
+        assert!((goal - 45.0).abs() < 1e-9);
+
+        let recommended =
+            config.replace("goal_throughput: 75", &format!("goal_throughput: {goal}"));
+        let applied = plan(&recommended, &req).unwrap();
+        assert!(applied.scenarios.iter().all(|scenario| {
+            scenario.estimated_export_spans_per_second <= applied.maximum_allowed_spans_per_second
+        }));
+    }
+
+    #[test]
+    fn mixed_policy_omits_goal_when_percentage_volume_exceeds_budget() {
+        let config = r#"
+processors:
+  adaptive_tail_sampling:
+    rules:
+      - name: selected-traffic
+        conditions: [tenant-is-selected]
+        sampler: { type: probabilistic, sampling_percentage: 10 }
+      - name: default
+        sampler:
+          type: adaptive_throughput
+          goal_throughput: 75
+          fingerprint_attributes: ['resource.attributes["service.name"]']
+service:
+  pipelines:
+    traces: { processors: [adaptive_tail_sampling] }
+"#;
+        let mut req = request();
+        req.replicas = 8;
+        req.scenarios.clear();
+        let report = plan(config, &req).unwrap();
+        assert_eq!(
+            report.scenarios[0].estimated_export_spans_per_second,
+            1_800.0
+        );
+        assert_eq!(report.maximum_allowed_spans_per_second, 660.0);
+        assert_eq!(report.recommended_local_throughput_goal, None);
+        assert!(report.recommendations.is_empty());
+        assert!(
+            report
+                .warnings
+                .join(" ")
+                .contains("No positive local throughput goal")
+        );
+    }
+
+    #[test]
+    fn adaptive_samplers_require_scoped_fingerprint_attributes() {
+        for sampler in [
+            "type: adaptive_throughput\n          goal_throughput: 100",
+            "type: adaptive_throughput\n          goal_throughput: 100\n          fingerprint_attributes: []",
+            "type: adaptive_percentage\n          goal_percentage: 10",
+            "type: adaptive_percentage\n          goal_percentage: 10\n          fingerprint_attributes: [service.name]",
+        ] {
+            let config = format!(
+                "processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: default\n        sampler:\n          {sampler}\nservice:\n  pipelines:\n    traces: {{ processors: [adaptive_tail_sampling] }}\n"
+            );
+            let error = plan(&config, &request()).unwrap_err().to_string();
+            assert!(error.contains("fingerprint_attributes"), "{error}");
+        }
+    }
+
+    #[test]
+    fn rejects_finite_inputs_when_derived_values_are_not_finite() {
+        let mut req = request();
+        req.budget = 1e308;
+        req.replicas = 1;
+        req.scenarios.clear();
+        req.tolerance_percent = 100.0;
+        assert!(
+            plan(CONFIG, &req)
+                .unwrap_err()
+                .to_string()
+                .contains("supported numeric range")
+        );
+
+        req.budget = f64::MIN_POSITIVE;
+        req.tolerance_percent = 0.0;
+        assert!(
+            plan(CONFIG, &req)
+                .unwrap_err()
+                .to_string()
+                .contains("supported numeric range")
         );
     }
 }

@@ -85,10 +85,10 @@
   },
   {
     "id": "plan-report",
-    "claim": "Plans report each scenario's fleet cap, estimated export, and proportional local-goal recommendation.",
+    "claim": "Plans report each scenario's fleet cap, estimated export, and a local-goal recommendation that stays within the allowance.",
     "where": "README usage",
     "test": "npm run test:claim -- @claim:plan-report",
-    "sandbox": "run two non-sample throughput fixtures; assert every scenario ceiling/export and the proportional recommendation rows"
+    "sandbox": "run pure and mixed-policy fixtures; apply the recommended goal and assert every scenario stays within the reported allowance"
   },
   {
     "id": "mit-license",

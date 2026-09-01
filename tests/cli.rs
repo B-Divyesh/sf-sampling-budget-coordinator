@@ -11,6 +11,7 @@ processors:
         sampler:
           type: adaptive_throughput
           goal_throughput: 100
+          fingerprint_attributes: ['resource.attributes["service.name"]']
 service:
   pipelines:
     traces:
@@ -131,4 +132,111 @@ fn privacy_documentation_scopes_yaml_handling_to_local_process_memory() {
         );
         assert!(!public_copy.contains("reads only referenced processors"));
     }
+}
+
+#[test]
+fn exact_mixed_policy_failure_never_returns_an_unsafe_recommendation() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("mixed.yaml");
+    fs::write(
+        &path,
+        r#"
+processors:
+  adaptive_tail_sampling:
+    rules:
+      - name: conditional-ten-percent
+        conditions: [tenant-is-trial]
+        sampler: { type: probabilistic, sampling_percentage: 10 }
+      - name: default
+        sampler:
+          type: adaptive_throughput
+          goal_throughput: 75
+          fingerprint_attributes: ['resource.attributes["service.name"]']
+service:
+  pipelines:
+    traces: { processors: [adaptive_tail_sampling] }
+"#,
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("sbc")
+        .unwrap()
+        .args(["plan", "--config"])
+        .arg(path)
+        .args([
+            "--budget",
+            "600",
+            "--replicas",
+            "8",
+            "--input",
+            "12000",
+            "--tolerance",
+            "10",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    assert_eq!(
+        report["scenarios"][0]["estimated_export_spans_per_second"],
+        1800.0
+    );
+    assert_eq!(report["maximum_allowed_spans_per_second"], 660.0);
+    assert!(report["recommended_local_throughput_goal"].is_null());
+    assert!(report["recommendations"].as_array().unwrap().is_empty());
+    assert!(
+        report["warnings"][0]
+            .as_str()
+            .unwrap()
+            .contains("No positive local throughput goal")
+    );
+}
+
+#[test]
+fn missing_adaptive_fingerprint_is_invalid_input() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("missing-fingerprint.yaml");
+    fs::write(
+        &path,
+        CONFIG.replace(
+            "          fingerprint_attributes: ['resource.attributes[\"service.name\"]']\n",
+            "",
+        ),
+    )
+    .unwrap();
+    Command::cargo_bin("sbc")
+        .unwrap()
+        .args(["plan", "--config"])
+        .arg(path)
+        .args(["--budget", "100"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("fingerprint_attributes"));
+}
+
+#[test]
+fn overflowing_derived_report_values_are_invalid_input() {
+    let (_directory, path) = fixture();
+    Command::cargo_bin("sbc")
+        .unwrap()
+        .args(["plan", "--config"])
+        .arg(path)
+        .args([
+            "--budget",
+            "1e308",
+            "--replicas",
+            "1",
+            "--input",
+            "12000",
+            "--tolerance",
+            "100",
+            "--json",
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("supported numeric range"));
 }

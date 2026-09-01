@@ -9,10 +9,16 @@ processors:
         sampler:
           type: adaptive_throughput
           goal_throughput: 100
+          fingerprint_attributes:
+            - resource.attributes["service.name"]
+            - span.attributes["http.route"]
       - name: default
         sampler:
           type: adaptive_throughput
           goal_throughput: 500
+          fingerprint_attributes:
+            - resource.attributes["service.name"]
+            - span.attributes["http.route"]
 
 service:
   pipelines:

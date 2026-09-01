@@ -39,6 +39,9 @@ processors:
         sampler:
           type: adaptive_throughput
           goal_throughput: 600
+          fingerprint_attributes:
+            - resource.attributes["service.name"]
+            - span.attributes["http.route"]
 
 service:
   pipelines:
@@ -57,7 +60,7 @@ sbc plan \
   --input 12000
 ```
 
-The report shows each scale's fleet cap and estimated export. It recommends `budget / maximum scenario replicas` for each local `goal_throughput`.
+The report shows each scale's fleet cap and estimated export. It reserves budget for percentage and always-sample rules before recommending local `goal_throughput` values. If those rules already consume the budget, the report omits the goal and explains why.
 
 Reports state steady-state, even-load, and rule-overlap assumptions. Conditional `always_sample` rules also produce a warning.
 
@@ -78,7 +81,7 @@ Both commands accept `--json` for scripting. `--input` is the incoming span rate
 
 Version 0.1 supports processors referenced by `service.pipelines.traces`:
 
-- `adaptive_tail_sampling` rules using `adaptive_throughput`, `adaptive_percentage`, `probabilistic`, and `always_sample`, following the documented development schema on 2026-08-28.
+- `adaptive_tail_sampling` rules using `adaptive_throughput`, `adaptive_percentage`, `probabilistic`, and `always_sample`, following the documented development schema on 2026-08-28. Both adaptive types require at least one scoped `fingerprint_attributes` selector.
 - Top-level `probabilistic_sampler` processors with `sampling_percentage`.
 - Multiple throughput rules as a conservative sum of their configured ceilings.
 

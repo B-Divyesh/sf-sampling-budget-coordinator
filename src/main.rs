@@ -186,7 +186,7 @@ fn print_human(report: &PlanReport, asserting: bool) {
         println!();
         println!("RECOMMENDED LOCAL GOAL   {goal:.2} spans/s per instance");
         println!(
-            "Sized for {} replicas; divide the fleet budget by the peak replica count.",
+            "Sized for {} replicas after reserving modeled non-throughput volume.",
             report.maximum_scenario_replicas
         );
         for recommendation in &report.recommendations {

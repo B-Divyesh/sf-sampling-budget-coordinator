@@ -13,6 +13,12 @@ All notable changes follow Keep a Changelog. This project uses semantic versioni
 
 - Rewrote the first screen around the platform-engineer job and direct sample action.
 - Precache the complete versioned browser shell for reliable first-visit offline reloads.
+- Require documented scoped fingerprints for adaptive sampler rules and examples.
+- Reserve modeled percentage-policy volume before recommending local throughput goals.
+
+### Fixed
+
+- Reject reports whose derived numeric values exceed the finite JSON range.
 
 ## [0.1.0] - 2026-08-28
 

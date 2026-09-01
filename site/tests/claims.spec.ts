@@ -55,7 +55,7 @@ test("@claim:local-privacy planner and CLI keep input local", async ({ page }, t
   const directory = mkdtempSync(join(tmpdir(), "sbc-private-"));
   const config = join(directory, "collector.yaml");
   const sentinel = "DO_NOT_PRINT_THIS_SECRET";
-  writeFileSync(config, `processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: default\n        sampler: { type: adaptive_throughput, goal_throughput: 60 }\nexporters:\n  otlp:\n    headers: { authorization: ${sentinel} }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling], exporters: [otlp] }\n`);
+  writeFileSync(config, `processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: default\n        sampler: { type: adaptive_throughput, goal_throughput: 60, fingerprint_attributes: ['resource.attributes["service.name"]'] }\nexporters:\n  otlp:\n    headers: { authorization: ${sentinel} }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling], exporters: [otlp] }\n`);
   const output = run(["plan", "--config", config, "--budget", "600", "--replicas", "8", "--input", "12000"], directory);
   expect(output.status).toBe(0);
   expect(`${output.stdout}${output.stderr}`).not.toContain(sentinel);
@@ -115,11 +115,11 @@ test("@claim:supported-sampler-models calculates every documented sampler type",
   test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
   const cases = [
     {
-      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100 }\n      - sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\n      - sampler: { type: adaptive_throughput, goal_throughput: 50, fingerprint_attributes: ['span.attributes[\"http.route\"]'] }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
       expected: 300
     },
     {
-      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_percentage, goal_percentage: 10 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_percentage, goal_percentage: 10, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
       expected: 100
     },
     {
@@ -145,11 +145,21 @@ test("@claim:supported-sampler-models calculates every documented sampler type",
     if (item.warning) expect(report.warnings.join(" ")).toContain("without a rule traffic share");
     rmSync(directory, { recursive: true });
   }
+  for (const sampler of [
+    "{ type: adaptive_throughput, goal_throughput: 100 }",
+    "{ type: adaptive_percentage, goal_percentage: 10 }"
+  ]) {
+    const { directory, config } = temporaryConfig(`processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: ${sampler}\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n`);
+    const output = run(["plan", "--config", config, "--budget", "2000", "--input", "1000"]);
+    expect(output.status).toBe(2);
+    expect(output.stderr).toContain("fingerprint_attributes");
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("@claim:configuration-errors rejects missing trace-pipeline wiring", async ({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
-  const { directory, config } = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100 }\nservice:\n  pipelines:\n    metrics: { processors: [adaptive_tail_sampling] }\n");
+  const { directory, config } = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\nservice:\n  pipelines:\n    metrics: { processors: [adaptive_tail_sampling] }\n");
   const output = run(["plan", "--config", config, "--budget", "600"]);
   expect(output.status).toBe(2);
   expect(output.stderr).toContain("no traces pipeline");
@@ -209,7 +219,7 @@ test("@claim:upper-bound-without-input reports configured ceilings", async ({}, 
 
 test("@claim:plan-report includes scenario ceilings, exports, and proportional recommendations", async ({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
-  const first = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: first\n        sampler: { type: adaptive_throughput, goal_throughput: 100 }\n      - name: second\n        sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const first = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: first\n        sampler: { type: adaptive_throughput, goal_throughput: 100, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\n      - name: second\n        sampler: { type: adaptive_throughput, goal_throughput: 50, fingerprint_attributes: ['span.attributes[\"http.route\"]'] }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
   const firstResult = jsonReport(["plan", "--config", first.config, "--budget", "500", "--replicas", "2", "--scenario", "3", "--input", "12000"]);
   expect(firstResult.output.status).toBe(0);
   expect(firstResult.report.scenarios.map((row: { configured_throughput_ceiling: number }) => row.configured_throughput_ceiling)).toEqual([300, 450]);
@@ -219,13 +229,23 @@ test("@claim:plan-report includes scenario ceilings, exports, and proportional r
   expect(firstRecommendations[1]).toBeCloseTo(55.55555555555556);
   rmSync(first.directory, { recursive: true });
 
-  const second = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const second = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 50, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
   const secondResult = jsonReport(["plan", "--config", second.config, "--budget", "500", "--replicas", "1", "--scenario", "4", "--input", "12000"]);
   expect(secondResult.output.status).toBe(0);
   expect(secondResult.report.scenarios.map((row: { configured_throughput_ceiling: number }) => row.configured_throughput_ceiling)).toEqual([50, 200]);
   expect(secondResult.report.scenarios.map((row: { estimated_export_spans_per_second: number }) => row.estimated_export_spans_per_second)).toEqual([50, 200]);
   expect(secondResult.report.recommendations[0].recommended_goal_throughput).toBe(125);
   rmSync(second.directory, { recursive: true });
+
+  const mixed = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: selected-traffic\n        conditions: [tenant-is-selected]\n        sampler: { type: probabilistic, sampling_percentage: 2 }\n      - name: default\n        sampler: { type: adaptive_throughput, goal_throughput: 75, fingerprint_attributes: ['resource.attributes[\"service.name\"]'] }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const mixedResult = jsonReport(["plan", "--config", mixed.config, "--budget", "600", "--replicas", "8", "--scenario", "3,5,8", "--input", "12000"]);
+  expect(mixedResult.output.status).toBe(0);
+  expect(mixedResult.report.recommended_local_throughput_goal).toBeCloseTo(45);
+  const appliedYaml = readFileSync(mixed.config, "utf8").replace("goal_throughput: 75", `goal_throughput: ${mixedResult.report.recommended_local_throughput_goal}`);
+  writeFileSync(mixed.config, appliedYaml);
+  const applied = jsonReport(["plan", "--config", mixed.config, "--budget", "600", "--replicas", "8", "--scenario", "3,5,8", "--input", "12000"]);
+  expect(applied.report.scenarios.every((row: { estimated_export_spans_per_second: number }) => row.estimated_export_spans_per_second <= applied.report.maximum_allowed_spans_per_second)).toBe(true);
+  rmSync(mixed.directory, { recursive: true });
 });
 
 test("@claim:unsupported-policy rejects an unknown sampling processor", async ({}, testInfo) => {
