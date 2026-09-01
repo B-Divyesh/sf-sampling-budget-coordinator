@@ -1,1 +1,1 @@
-Check OpenTelemetry collector fleets against one sampling budget before replicas change.
+Keep OpenTelemetry collector fleets within one span budget as replicas change.

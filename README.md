@@ -25,8 +25,6 @@ cargo install --path .
 sbc --help
 ```
 
-The package starts at `0.1.0`. Factory release automation owns registry publishing; do not publish from a workstation.
-
 ## Usage
 
 Given a collector configuration with an adaptive-throughput sampler:

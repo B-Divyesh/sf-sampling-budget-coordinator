@@ -96,7 +96,7 @@ test("all public pages include route metadata and the product 404", async ({ pag
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page not found");
-  await expect(page.getByRole("link", { name: "Open the planner" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "Open the planner" })).toHaveAttribute("href", "/#planner");
   const imageSize = await page.evaluate(async () => {
     const image = new Image();
     image.src = "/assets/social-card.webp";
@@ -104,6 +104,14 @@ test("all public pages include route metadata and the product 404", async ({ pag
     return { width: image.naturalWidth, height: image.naturalHeight };
   });
   expect(imageSize).toEqual({ width: 1200, height: 630 });
+});
+
+test("404 planner recovery opens and focuses the planner", async ({ page }) => {
+  await page.goto("/404.html");
+  await page.getByRole("link", { name: "Open the planner" }).click();
+  await expect(page).toHaveURL(/\/#planner$/);
+  await expect(page.locator("#planner")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 });
 
 test("landing includes a self-hosted terminal transcript", async ({ page }) => {
