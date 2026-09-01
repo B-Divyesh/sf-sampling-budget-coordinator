@@ -3,6 +3,7 @@
 ## Browser
 
 - URL: `https://sampling-budget-coordinator.sociobot.in/demo/`.
+- One-click alias: `https://sampling-budget-coordinator.sociobot.in/?demo=1`. It immediately replaces the URL with the canonical isolated `/demo/` workspace before users can change a planner value.
 - Local URL after `npm run dev`: `http://127.0.0.1:5173/demo/`.
 - The bundled sample models three current collectors, an eight-replica peak, a 600 spans/s fleet budget, and 12,000 incoming spans/s.
 - Demo state exists only in page memory. The demo reads and writes no `localStorage`, `sessionStorage`, IndexedDB, cookies, or real planner data.

@@ -68,4 +68,8 @@ No line exceeds 22 words. No copy uses the banned marketing terms.
 
 The README installation section now ends after the two install commands. The internal package-version and factory publishing sentences were removed. A repository search finds no remaining “Factory release automation,” “package starts,” “sampling economics,” “Fleet ledger,” or “Multiply where OTel does” copy.
 
-The catalog description is “Keep OpenTelemetry collector fleets within one span budget as replicas change.” It has 11 words, begins with a verb, and is 78 characters before its newline. Its behavior is covered by the `plan-report` and `scenario-assertion` claims.
+The catalog description is “Set safe OpenTelemetry sampling goals as fleet replicas change.” It has 9 words, begins with a verb, and is 63 characters before its newline. Its behavior is covered by the `plan-report` and `scenario-assertion` claims.
+
+## Round 3 demo entry check
+
+The first-screen action now opens `/?demo=1`. That alias immediately enters the separate `/demo/` document, where the persistent banner, reset control, and Start for real exit remain available. `@claim:demo-sandbox` starts from this alias and confirms the reset and empty browser storage.

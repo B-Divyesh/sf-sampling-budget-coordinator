@@ -1,1 +1,1 @@
-Keep OpenTelemetry collector fleets within one span budget as replicas change.
+Set safe OpenTelemetry sampling goals as fleet replicas change.
