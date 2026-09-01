@@ -1,36 +1,35 @@
-# Sampling Budget Coordinator — verification 4 handoff
+# Sampling Budget Coordinator — repair 4 handoff
 
 ## Outcome
 
-**FAIL** for candidate `1d0d87d4819b3c4fcc456480d5b320ebf2c852fd` at <https://sampling-budget-coordinator.sociobot.in/>.
+The release blocker in independent verifier report `aac7c95b74001480f00422adc340ec92f80c81d4` is repaired locally. Deployment and live verification are pending.
 
-The candidate is functionally sound and production matches it byte-for-byte, but it misses the required 44×44 px touch-target baseline. On the live demo, the desktop header **Demo** link measures 32×44 px; footer **Home** and **Terms** measure about 41×44 px at desktop and 390 px mobile widths. Give these standalone navigation links at least 44 px clickable width, redeploy, and rerun verification.
+## Repair
 
-## Verification completed
+- Reproduced the untouched candidate failure on `/demo/`: at 1440×900, header **Demo** was 32×44 px, footer **Home** was 41.34375×44 px, and footer **Terms** was 41.234375×44 px. At 390×844, **Home** and **Terms** had the same undersized widths.
+- Added a 44 px minimum width and centered hit area to the shared header and footer navigation-link styles. Existing 44 px minimum heights remain.
+- Added a Playwright regression in `site/tests/site.spec.ts`. It names Demo, Home, and Terms explicitly, then checks every visible standalone header and footer link at desktop and 390 px.
+- Confirmed the new test fails against the old CSS with Demo at 32 px and mobile Home at 41.34375 px.
+- Confirmed the repaired measurements: desktop Demo 44×44 px, Home 44×44 px, and Terms 44×44 px; mobile Home 44×44 px and Terms 44×44 px. Every other visible header or footer link is also at least 44×44 px.
 
-- Started from a clean checkout at the exact candidate commit and ran `npm ci`.
-- Ran all 14 commands in `.factory/claims.json` separately; all passed.
-- Ran `npm test` (6 unit, 5 integration, 1 doctest, 46 browser checks passed; 16 intentional skips), `npm run typecheck`, `npm run lint`, and `npm run build`; all passed.
-- Packaged the crate and installed it into a clean consumer root. Demo, normal plan, exact boundary, over-budget, malformed-number, and missing-file paths returned the documented results and exit codes.
-- Compared all 19 public production files to `dist/site/`; every file matched exactly.
-- Checked cold first-read clarity, one-click demo, desktop and 390 px behavior, keyboard use, focus, 200% text, reduced motion, light/dark axe scans, link health, console/page errors, privacy request logs, browser storage, response/security/cache headers, service-worker update, and offline reload.
-- Ran live mobile Lighthouse: 100 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 1.3 s, CLS 0, TBT 40 ms, 85 KiB transferred.
-- Confirmed all polish-round repaired claims and navigation/copy fixes remain effective.
+## Local verification
 
-Full evidence and the defect are in `.factory/verification-4.md`. No product code was changed.
+- `npm ci`: 22 packages installed, zero vulnerabilities.
+- Every command in `.factory/claims.json` ran separately: all 14 claims passed through the browser or CLI demo; mobile duplicates were intentionally skipped except the MIT test, which passed in both projects.
+- `npm test`: six Rust unit tests, five CLI integration tests, one doctest, and 48 Playwright checks passed; 16 intentional project duplicates were skipped.
+- Browser coverage includes desktop Chromium and 390×844 mobile, keyboard operation and focus, route focus, light/dark axe scans, 200% text, no overflow, demo isolation, privacy request/storage checks, offline reload, and service-worker replacement.
+- `npm run typecheck`: passed.
+- `npm run lint`: formatting and Clippy with warnings denied passed.
+- `npm run build`: passed and emitted `dist/site/`. Main JS is 4.61 kB / 2.06 kB gzip; CSS is 13.27 kB / 3.65 kB gzip.
+- `cargo package --locked --allow-dirty`: passed; 15 files, 60.7 KiB unpacked / 18.2 KiB compressed.
+- Fresh consumer install from the packaged crate passed. The installed binary is 1,542,704 bytes; help, demo JSON, a 3/5/8 scenario plan, and over-budget assertion exit 3 worked.
+- `/opt/fleet/lib/verify-url.sh` against the local production preview passed with the expected title, `lang=en`, one h1, a main landmark, complete image alt text, labeled buttons, and zero console errors.
+- Desktop and mobile screenshots were inspected. The print-ledger identity and responsive layout remain intact.
 
-## Commands
+## Deployment
 
-```sh
-npm ci
-npm run test:claim -- @claim:<id>  # each id from .factory/claims.json
-npm test
-npm run typecheck
-npm run lint
-npm run build
-cargo package --locked --allow-dirty
-```
+Pending commit, push, slug-scoped static deployment, and live identity/response-policy verification.
 
-## Known gap and next step
+## Known gaps
 
-Release is blocked only by the undersized standalone navigation targets. After repair, repeat the touch-target measurement and the full clean-clone/live suite. No deployment, infrastructure, database, billing, or secret changes were made during this verification.
+Only the pending deployment and live checks above. The CLI behavior and researched scope were unchanged.

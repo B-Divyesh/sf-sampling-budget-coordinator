@@ -184,7 +184,7 @@ a:hover { color: var(--signal-hover); }
 
 .header-actions { display: flex; align-items: center; gap: 16px; }
 .header-actions nav { display: flex; gap: 20px; }
-.header-actions a { display: inline-flex; min-height: 44px; align-items: center; font: 600 0.8125rem/1 var(--mono); text-transform: uppercase; }
+.header-actions a { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; font: 600 0.8125rem/1 var(--mono); text-transform: uppercase; }
 
 .theme-button,
 .copy-button {
@@ -273,6 +273,7 @@ h3 { margin: 0; font-size: 1.15rem; letter-spacing: -0.02em; }
 .text-link,
 .demo-banner a,
 .footer-links a { display: inline-flex; min-height: 44px; align-items: center; }
+.footer-links a { min-width: 44px; justify-content: center; }
 
 .hero-art {
   position: relative;

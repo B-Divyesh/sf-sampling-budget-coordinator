@@ -140,6 +140,35 @@ test("demo controls work with the keyboard and keep focus visible", async ({ pag
   expect(outline).not.toBe("none");
 });
 
+test("standalone header and footer navigation targets are at least 44 by 44 CSS pixels", async ({ page }, testInfo) => {
+  await page.goto("/demo/");
+
+  const requiredTargets = [
+    ...(testInfo.project.name === "chromium" ? [{ region: "header", name: "Demo" }] : []),
+    { region: "footer", name: "Home" },
+    { region: "footer", name: "Terms" }
+  ];
+
+  for (const { region, name } of requiredTargets) {
+    const target = page.locator(`${region} nav`).getByRole("link", { name, exact: true });
+    await expect(target, `${testInfo.project.name} ${region} ${name}`).toBeVisible();
+    const box = await target.boundingBox();
+    expect(box, `${testInfo.project.name} ${region} ${name} has a box`).not.toBeNull();
+    expect(box!.width, `${testInfo.project.name} ${region} ${name} width`).toBeGreaterThanOrEqual(44);
+    expect(box!.height, `${testInfo.project.name} ${region} ${name} height`).toBeGreaterThanOrEqual(44);
+  }
+
+  const standaloneLinks = page.locator(".site-header a:visible, .site-footer a:visible");
+  for (let index = 0; index < (await standaloneLinks.count()); index += 1) {
+    const target = standaloneLinks.nth(index);
+    const label = ((await target.getAttribute("aria-label")) ?? (await target.innerText())).trim();
+    const box = await target.boundingBox();
+    expect(box, `${testInfo.project.name} ${label} has a box`).not.toBeNull();
+    expect(box!.width, `${testInfo.project.name} ${label} width`).toBeGreaterThanOrEqual(44);
+    expect(box!.height, `${testInfo.project.name} ${label} height`).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test("a new service worker discards an old shell cache", async ({ browser }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "service-worker upgrade is covered once in Chromium");
   const context = await browser.newContext();
