@@ -25,7 +25,8 @@ function jsonReport(args: string[]) {
 
 test("@claim:demo-sandbox bundled demos stay isolated", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "CLI and storage isolation need one browser engine");
-  await page.goto("/demo/");
+  await page.goto("/?demo=1");
+  await expect(page).toHaveURL(/\/demo\/$/);
   await page.getByLabel(/Configured local goal/).fill("42");
   await page.getByRole("button", { name: "Recalculate budget" }).click();
   await page.getByRole("button", { name: "Reset demo" }).click();

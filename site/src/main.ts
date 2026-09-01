@@ -27,6 +27,13 @@ const sampleValues = {
   tolerance: "10"
 } as const;
 
+// Keep the catalog-friendly query entry point while serving the sandbox from
+// its own canonical document.  The redirect happens before any planner value
+// can be changed, so `?demo=1` cannot read or write a regular-planner state.
+if (document.body.dataset.demo !== "true" && new URLSearchParams(window.location.search).get("demo") === "1") {
+  window.location.replace("/demo/");
+}
+
 function enableSkipLinkFocus(): void {
   document.querySelectorAll<HTMLAnchorElement>('a.skip-link[href^="#"]').forEach((link) => {
     link.addEventListener("click", (event) => {
@@ -48,7 +55,12 @@ function focusRouteHeading(): void {
     const link = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
     if (!link || link.target || link.hasAttribute("download")) return;
     const destination = new URL(link.href, window.location.href);
-    if (destination.origin === window.location.origin && destination.pathname !== window.location.pathname) {
+    const entersDemoFromQuery =
+      destination.searchParams.get("demo") === "1" && window.location.search !== destination.search;
+    if (
+      destination.origin === window.location.origin &&
+      (destination.pathname !== window.location.pathname || entersDemoFromQuery)
+    ) {
       history.replaceState({ ...history.state, focusRouteHeading: true }, "");
     }
   });

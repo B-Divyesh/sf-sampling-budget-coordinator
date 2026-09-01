@@ -73,8 +73,15 @@ test("first screen names the job, audience, sample action, and three facts", asy
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Keep collector sampling within budget");
   await expect(page.getByText(/For platform engineers managing OpenTelemetry fleets/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Try it with sample data" })).toHaveAttribute("href", "/demo/");
+  await expect(page.getByRole("link", { name: "Try it with sample data" })).toHaveAttribute("href", "/?demo=1");
   await expect(page.locator(".plain-facts li")).toHaveCount(3);
+});
+
+test("the query demo entry redirects into the isolated sample workspace", async ({ page }) => {
+  await page.goto("/?demo=1");
+  await expect(page).toHaveURL(/\/demo\/$/);
+  await expect(page.getByRole("complementary", { name: "Demo mode" })).toContainText("nothing is saved");
+  await expect(page.getByRole("button", { name: "Reset demo" })).toBeVisible();
 });
 
 test("demo route starts in the used product and exposes its sandbox controls", async ({ page }) => {
