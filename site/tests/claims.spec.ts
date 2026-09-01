@@ -11,6 +11,18 @@ function run(args: string[], cwd = process.cwd()) {
   return spawnSync(binary, args, { cwd, encoding: "utf8" });
 }
 
+function temporaryConfig(yaml: string): { directory: string; config: string } {
+  const directory = mkdtempSync(join(tmpdir(), "sbc-claim-"));
+  const config = join(directory, "collector.yaml");
+  writeFileSync(config, yaml);
+  return { directory, config };
+}
+
+function jsonReport(args: string[]) {
+  const output = run([...args, "--json"]);
+  return { output, report: output.stdout ? JSON.parse(output.stdout) : null };
+}
+
 test("@claim:demo-sandbox bundled demos stay isolated", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "CLI and storage isolation need one browser engine");
   await page.goto("/demo/");
@@ -97,6 +109,123 @@ test("@claim:deploy-assertion returns stable machine-readable exit codes", async
   const plan = run(["plan", "--config", example, "--budget", "600", "--replicas", "3", "--json"]);
   expect(plan.status).toBe(0);
   expect(JSON.parse(plan.stdout).schema_version).toBe("sbc.report/v1");
+});
+
+test("@claim:supported-sampler-models calculates every documented sampler type", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const cases = [
+    {
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100 }\n      - sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      expected: 300
+    },
+    {
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_percentage, goal_percentage: 10 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      expected: 100
+    },
+    {
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: probabilistic, sampling_percentage: 20 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      expected: 200
+    },
+    {
+      yaml: "processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: errors\n        conditions: [span.status.code == STATUS_CODE_ERROR]\n        sampler: { type: always_sample }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n",
+      expected: 1000,
+      warning: true
+    },
+    {
+      yaml: "processors:\n  probabilistic_sampler:\n    sampling_percentage: 5\nservice:\n  pipelines:\n    traces: { processors: [probabilistic_sampler] }\n",
+      expected: 50
+    }
+  ];
+  for (const item of cases) {
+    const { directory, config } = temporaryConfig(item.yaml);
+    const { output, report } = jsonReport(["plan", "--config", config, "--budget", "2000", "--replicas", "2", "--input", "1000"]);
+    expect(output.status).toBe(0);
+    expect(report.scenarios).toHaveLength(1);
+    expect(report.scenarios[0].estimated_export_spans_per_second).toBe(item.expected);
+    if (item.warning) expect(report.warnings.join(" ")).toContain("without a rule traffic share");
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("@claim:configuration-errors rejects missing trace-pipeline wiring", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const { directory, config } = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 100 }\nservice:\n  pipelines:\n    metrics: { processors: [adaptive_tail_sampling] }\n");
+  const output = run(["plan", "--config", config, "--budget", "600"]);
+  expect(output.status).toBe(2);
+  expect(output.stderr).toContain("no traces pipeline");
+  rmSync(directory, { recursive: true });
+});
+
+test("@claim:scenario-assertion checks repeated and comma-separated scenarios", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  for (const scenarios of [["--scenario", "1", "--scenario", "2"], ["--scenario", "1,2"]]) {
+    const { output, report } = jsonReport(["assert", "--config", example, "--budget", "1000", "--replicas", "1", "--input", "12000", ...scenarios]);
+    expect(output.status).toBe(3);
+    expect(report.maximum_allowed_spans_per_second).toBe(1100);
+    expect(report.scenarios.map((row: { replicas: number }) => row.replicas)).toEqual([1, 2]);
+    expect(report.scenarios.map((row: { status: string }) => row.status)).toEqual(["within_budget", "over_budget"]);
+  }
+});
+
+test("@claim:assumption-reporting emits assumptions and conditional warnings", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const { directory, config } = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: errors\n        conditions: [span.status.code == STATUS_CODE_ERROR]\n        sampler: { type: always_sample }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const human = run(["plan", "--config", config, "--budget", "1200", "--input", "1000"]);
+  expect(human.status).toBe(0);
+  expect(human.stdout).toContain("ASSUMPTIONS");
+  expect(human.stdout).toContain("steady-state");
+  expect(human.stdout).toContain("evenly load-balanced");
+  expect(human.stdout).toContain("conditional throughput rules");
+  expect(human.stdout).toContain("WARNINGS");
+  const { output, report } = jsonReport(["plan", "--config", config, "--budget", "1200", "--input", "1000"]);
+  expect(output.status).toBe(0);
+  expect(report.assumptions.join(" ")).toContain("steady-state");
+  expect(report.assumptions.join(" ")).toContain("evenly load-balanced");
+  expect(report.assumptions.join(" ")).toContain("conditional throughput rules");
+  expect(report.warnings.join(" ")).toContain("without a rule traffic share");
+  rmSync(directory, { recursive: true });
+});
+
+test("@claim:default-tolerance defaults to ten percent and supports an override", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const defaultReport = jsonReport(["assert", "--config", example, "--budget", "600", "--replicas", "1", "--input", "12000"]);
+  expect(defaultReport.output.status).toBe(0);
+  expect(defaultReport.report.tolerance_percent).toBe(10);
+  expect(defaultReport.report.maximum_allowed_spans_per_second).toBe(660);
+  const overridden = jsonReport(["assert", "--config", example, "--budget", "600", "--replicas", "1", "--input", "12000", "--tolerance", "5"]);
+  expect(overridden.output.status).toBe(0);
+  expect(overridden.report.tolerance_percent).toBe(5);
+  expect(overridden.report.maximum_allowed_spans_per_second).toBe(630);
+});
+
+test("@claim:upper-bound-without-input reports configured ceilings", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const { output, report } = jsonReport(["plan", "--config", example, "--budget", "6000", "--replicas", "3", "--scenario", "5"]);
+  expect(output.status).toBe(0);
+  expect(report.scenarios.map((row: { configured_throughput_ceiling: number }) => row.configured_throughput_ceiling)).toEqual([1800, 3000]);
+  expect(report.scenarios.map((row: { estimated_export_spans_per_second: number }) => row.estimated_export_spans_per_second)).toEqual([1800, 3000]);
+  expect(report.assumptions.join(" ")).toContain("No input rate was provided");
+});
+
+test("@claim:plan-report includes scenario ceilings, exports, and proportional recommendations", async ({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "CLI contract is covered once in Chromium");
+  const first = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - name: first\n        sampler: { type: adaptive_throughput, goal_throughput: 100 }\n      - name: second\n        sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const firstResult = jsonReport(["plan", "--config", first.config, "--budget", "500", "--replicas", "2", "--scenario", "3", "--input", "12000"]);
+  expect(firstResult.output.status).toBe(0);
+  expect(firstResult.report.scenarios.map((row: { configured_throughput_ceiling: number }) => row.configured_throughput_ceiling)).toEqual([300, 450]);
+  expect(firstResult.report.scenarios.map((row: { estimated_export_spans_per_second: number }) => row.estimated_export_spans_per_second)).toEqual([300, 450]);
+  const firstRecommendations = firstResult.report.recommendations.map((row: { recommended_goal_throughput: number }) => row.recommended_goal_throughput);
+  expect(firstRecommendations[0]).toBeCloseTo(111.11111111111111);
+  expect(firstRecommendations[1]).toBeCloseTo(55.55555555555556);
+  rmSync(first.directory, { recursive: true });
+
+  const second = temporaryConfig("processors:\n  adaptive_tail_sampling:\n    rules:\n      - sampler: { type: adaptive_throughput, goal_throughput: 50 }\nservice:\n  pipelines:\n    traces: { processors: [adaptive_tail_sampling] }\n");
+  const secondResult = jsonReport(["plan", "--config", second.config, "--budget", "500", "--replicas", "1", "--scenario", "4", "--input", "12000"]);
+  expect(secondResult.output.status).toBe(0);
+  expect(secondResult.report.scenarios.map((row: { configured_throughput_ceiling: number }) => row.configured_throughput_ceiling)).toEqual([50, 200]);
+  expect(secondResult.report.scenarios.map((row: { estimated_export_spans_per_second: number }) => row.estimated_export_spans_per_second)).toEqual([50, 200]);
+  expect(secondResult.report.recommendations[0].recommended_goal_throughput).toBe(125);
+  rmSync(second.directory, { recursive: true });
 });
 
 test("@claim:unsupported-policy rejects an unknown sampling processor", async ({}, testInfo) => {

@@ -40,6 +40,33 @@ function enableSkipLinkFocus(): void {
   });
 }
 
+function focusRouteHeading(): void {
+  const heading = document.querySelector<HTMLElement>("h1");
+  if (!heading) return;
+  heading.tabIndex = -1;
+  document.addEventListener("click", (event) => {
+    const link = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
+    if (!link || link.target || link.hasAttribute("download")) return;
+    const destination = new URL(link.href, window.location.href);
+    if (destination.origin === window.location.origin && destination.pathname !== window.location.pathname) {
+      history.replaceState({ ...history.state, focusRouteHeading: true }, "");
+    }
+  });
+  const cameFromThisSite = (() => {
+    try {
+      return Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  })();
+  if (cameFromThisSite || history.state?.focusRouteHeading === true) {
+    requestAnimationFrame(() => heading.focus());
+  }
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) requestAnimationFrame(() => heading.focus());
+  });
+}
+
 type Values = {
   budget: number;
   goal: number;
@@ -154,7 +181,7 @@ copyButton.addEventListener("click", async () => {
     command.select();
     copyButton.textContent = "Selected";
   }
-  window.setTimeout(() => (copyButton.textContent = "Copy"), 1600);
+  window.setTimeout(() => (copyButton.textContent = "Copy command"), 1600);
 });
 
 themeButton.addEventListener("click", () => {
@@ -173,6 +200,7 @@ window.addEventListener("online", updateNetworkStatus);
 window.addEventListener("offline", updateNetworkStatus);
 updateNetworkStatus();
 enableSkipLinkFocus();
+focusRouteHeading();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));

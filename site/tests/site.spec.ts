@@ -86,7 +86,7 @@ test("all public pages include route metadata and the product 404", async ({ pag
     await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   }
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("This page is not in the plan");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page not found");
   await expect(page.getByRole("link", { name: "Open the planner" })).toHaveAttribute("href", "/");
   const imageSize = await page.evaluate(async () => {
     const image = new Image();
@@ -112,6 +112,16 @@ test("skip links move keyboard focus to main content", async ({ page }) => {
     await page.keyboard.press("Enter");
     await expect(page.locator("main")).toBeFocused();
   }
+});
+
+test("same-origin navigation and Back move focus to the destination heading", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Try it with sample data" }).click();
+  await expect(page).toHaveURL(/\/demo\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 });
 
 test("demo controls work with the keyboard and keep focus visible", async ({ page }) => {

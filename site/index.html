@@ -12,16 +12,16 @@
     <link rel="stylesheet" href="/src/style.css" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sampling-budget-coordinator.sociobot.in/" />
-    <meta property="og:title" content="Sampling Budget Coordinator — Check OTel Budgets" />
+    <meta property="og:title" content="Sampling Budget Coordinator — Check Fleet Budgets" />
     <meta property="og:description" content="Set safe per-instance OpenTelemetry sampling goals before replicas change." />
     <meta property="og:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Sampling Budget Coordinator — Check OTel Budgets" />
+    <meta name="twitter:title" content="Sampling Budget Coordinator — Check Fleet Budgets" />
     <meta name="twitter:description" content="Set safe per-instance OpenTelemetry sampling goals before replicas change." />
     <meta name="twitter:image" content="https://sampling-budget-coordinator.sociobot.in/assets/social-card.webp" />
-    <title>Sampling Budget Coordinator — Check OTel Budgets</title>
+    <title>Sampling Budget Coordinator — Check Fleet Budgets</title>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
@@ -53,7 +53,7 @@
       </section>
 
       <section class="section" id="planner" aria-labelledby="planner-title">
-        <div class="section-heading"><p class="folio">01 / calculator</p><div><h2 id="planner-title">Test the scale change</h2><p>This planner uses the CLI throughput formula. It keeps values in browser memory until you close the page.</p></div></div>
+        <div class="section-heading"><p class="folio">01 / calculator</p><div><h2 id="planner-title">Test one local goal at scale</h2><p>This browser calculator models one adaptive-throughput goal. It keeps values in browser memory until you close the page.</p></div></div>
         <div class="planner-shell">
           <form class="planner-form" id="planner-form" novalidate>
             <div class="form-row">
@@ -71,24 +71,24 @@
           </form>
 
           <section class="result" id="planner-result" aria-labelledby="result-title" aria-live="polite">
-            <div class="result-top"><h3 id="result-title">Fleet ledger</h3><span class="status" id="result-status">Over budget</span></div>
+            <div class="result-top"><h3 id="result-title">Fleet budget result</h3><span class="status" id="result-status">Over budget</span></div>
             <p class="result-label">Safe per-instance goal at peak</p>
             <p class="result-number"><output id="recommended-goal">75</output> <span>spans/s</span></p>
             <div class="meter" role="img" aria-label="Peak estimated export"><div class="meter-fill over" id="meter-fill"></div><span class="meter-marker" aria-hidden="true"></span></div>
             <div class="meter-legend"><span>0%</span><span>budget + 10%</span></div>
             <table class="ledger"><thead><tr><th scope="col">Replicas</th><th scope="col">Fleet cap</th><th scope="col">Est. export</th><th scope="col">State</th></tr></thead><tbody id="ledger-body"></tbody></table>
             <p class="result-label">Deploy assertion</p>
-            <div class="command-wrap"><textarea class="command" id="assertion-command" readonly aria-label="Generated CLI assertion"></textarea><button class="copy-button" id="copy-command" type="button">Copy</button></div>
-            <p class="method-note">Assumes steady-state input and an even load balance. The CLI reports additional config-specific assumptions.</p>
+            <div class="command-wrap"><textarea class="command" id="assertion-command" readonly aria-label="Generated CLI assertion"></textarea><button class="copy-button" id="copy-command" type="button">Copy command</button></div>
+            <p class="method-note">Assumes steady-state input and an even load balance. The CLI reports additional configuration-specific assumptions.</p>
           </section>
         </div>
       </section>
 
       <section class="section" aria-labelledby="method-title">
-        <div class="section-heading"><p class="folio">02 / method</p><div><h2 id="method-title">Budget math you can audit</h2><p>The CLI needs a collector config, not trace data. It distinguishes per-replica goals from fleet-safe percentage policies.</p></div></div>
+        <div class="section-heading"><p class="folio">02 / method</p><div><h2 id="method-title">Budget math you can audit</h2><p>The CLI needs a collector configuration, not trace data. It models supported sampler policies before estimating volume.</p></div></div>
         <div class="steps">
           <article class="step"><span class="step-number">A / READ</span><h3>Follow the traces pipeline</h3><p>The CLI audits referenced processors and rejects unsupported sampling policies rather than making a quiet guess.</p></article>
-          <article class="step"><span class="step-number">B / MODEL</span><h3>Multiply where OTel does</h3><p>Local adaptive-throughput goals scale with replicas. Probabilistic and adaptive-percentage rates stay fractions of the load-balanced input.</p></article>
+          <article class="step"><span class="step-number">B / MODEL</span><h3>Account for replicas by sampler type</h3><p>Local adaptive-throughput goals scale with replicas. Percentage policies stay fractions of the load-balanced input.</p></article>
           <article class="step"><span class="step-number">C / ASSERT</span><h3>Stop an over-budget deploy</h3><p>Each scenario is checked against budget plus tolerance. Exit code 3 marks an over-budget assertion; JSON feeds CI.</p></article>
         </div>
       </section>

@@ -58,15 +58,15 @@
           </form>
 
           <section class="result" id="planner-result" aria-labelledby="result-title" aria-live="polite">
-            <div class="result-top"><h2 id="result-title">Fleet ledger</h2><span class="status" id="result-status">Over budget</span></div>
+            <div class="result-top"><h2 id="result-title">Fleet budget result</h2><span class="status" id="result-status">Over budget</span></div>
             <p class="result-label">Safe per-instance goal at peak</p>
             <p class="result-number"><output id="recommended-goal">75</output> <span>spans/s</span></p>
             <div class="meter" role="img" aria-label="Peak estimated export"><div class="meter-fill over" id="meter-fill"></div><span class="meter-marker" aria-hidden="true"></span></div>
             <div class="meter-legend"><span>0%</span><span>budget + 10%</span></div>
             <table class="ledger"><thead><tr><th scope="col">Replicas</th><th scope="col">Fleet cap</th><th scope="col">Est. export</th><th scope="col">State</th></tr></thead><tbody id="ledger-body"></tbody></table>
             <p class="result-label">Deploy assertion</p>
-            <div class="command-wrap"><textarea class="command" id="assertion-command" readonly aria-label="Generated CLI assertion"></textarea><button class="copy-button" id="copy-command" type="button">Copy</button></div>
-            <p class="method-note">Assumes steady input and an even load balance. The CLI reports more config-specific assumptions.</p>
+            <div class="command-wrap"><textarea class="command" id="assertion-command" readonly aria-label="Generated CLI assertion"></textarea><button class="copy-button" id="copy-command" type="button">Copy command</button></div>
+            <p class="method-note">Assumes steady input and an even load balance. The CLI reports more configuration-specific assumptions.</p>
           </section>
         </div>
       </section>

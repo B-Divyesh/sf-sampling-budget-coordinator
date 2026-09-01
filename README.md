@@ -1,18 +1,18 @@
 # Sampling Budget Coordinator
 
-Sampling Budget Coordinator (`sbc`) audits OpenTelemetry collector sampling economics before deployment. It is for platform engineers who need one fleet-wide span budget even while collector replica counts change.
+Sampling Budget Coordinator (`sbc`) checks whether OpenTelemetry collectors stay within one fleet-wide span budget before deployment. It is for platform engineers who need one fleet-wide span budget while collector replicas change.
 
 It parses the collector YAML you select in local process memory. Collector configuration can contain endpoints, headers, identifiers, or credentials outside the traces pipeline. `sbc` does not transmit, persist, or log configuration contents. It needs no trace payloads or span attributes and includes no telemetry or network client.
 
 ## Try the sample
 
-Run the complete workflow without providing a config:
+Run the complete workflow without providing a collector configuration:
 
 ```sh
 cargo run -- demo
 ```
 
-`sbc demo` copies the bundled collector config into a new temporary directory, runs the same planner, saves `report.json`, and prints both paths. It never reads or writes your project data.
+`sbc demo` copies the bundled collector configuration into a new temporary directory. It runs the planner, saves `report.json`, and prints both paths. It never reads or writes your project data.
 
 The browser demo is available at <https://sampling-budget-coordinator.sociobot.in/demo/>. Its sample values stay in browser memory under an isolated demo mode and are never saved.
 
@@ -29,7 +29,7 @@ The package starts at `0.1.0`. Factory release automation owns registry publishi
 
 ## Usage
 
-Given a collector config with an adaptive throughput sampler:
+Given a collector configuration with an adaptive-throughput sampler:
 
 ```yaml
 processors:
@@ -57,7 +57,9 @@ sbc plan \
   --input 12000
 ```
 
-The report shows the configured fleet cap at each scale, an estimated export volume, and a conservative recommendation: set each local `goal_throughput` to `budget / maximum scenario replicas`. Estimates explicitly state the equal traffic split, steady-state, and rule-overlap assumptions.
+The report shows each scale's fleet cap and estimated export. It recommends `budget / maximum scenario replicas` for each local `goal_throughput`.
+
+Reports state steady-state, even-load, and rule-overlap assumptions. Conditional `always_sample` rules also produce a warning.
 
 Use the assertion in a deploy pipeline:
 
@@ -66,11 +68,13 @@ sbc assert --config collector.yaml --budget 600 --replicas 8 --input 12000
 sbc assert --config collector.yaml --budget 600 --replicas 8 --input 12000 --json
 ```
 
-Exit codes are stable: `0` means within budget, `2` means the input/config is invalid or unsupported, and `3` means the estimated export exceeds the declared budget plus tolerance. The default tolerance is 10%; set it with `--tolerance 5`.
+Exit `0` means within budget. Exit `2` means the input or collector configuration is invalid or unsupported. Exit `3` means estimated export exceeds budget plus tolerance.
 
-Both commands accept `--json` for scripting. `--input` is the incoming span rate before processors; omit it when only a configured upper-bound audit is needed. Replica scenarios may be repeated or comma-separated. Run `sbc <command> --help` for all options.
+The default tolerance is 10%; set it with `--tolerance 5`.
 
-### Supported configuration surface
+Both commands accept `--json` for scripting. `--input` is the incoming span rate before processors. Omit it for a throughput-only configured-ceiling audit. Replica scenarios may be repeated or comma-separated. Run `sbc <command> --help` for all options.
+
+### Supported collector configurations
 
 Version 0.1 supports processors referenced by `service.pipelines.traces`:
 
@@ -78,7 +82,7 @@ Version 0.1 supports processors referenced by `service.pipelines.traces`:
 - Top-level `probabilistic_sampler` processors with `sampling_percentage`.
 - Multiple throughput rules as a conservative sum of their configured ceilings.
 
-Unknown sampling processors and missing trace pipeline wiring are errors, not silent guesses. Conditional `always_sample` rules are called out because their volume needs traffic-share data and therefore cannot be bounded from config alone.
+Unknown sampling processors and missing trace pipeline wiring return errors. Conditional `always_sample` rules need traffic-share data, so their estimate conservatively allows all input.
 
 ## Develop and verify
 
@@ -94,7 +98,7 @@ npm run build:site  # static site -> dist/site
 cargo package --allow-dirty
 ```
 
-`npm test` runs Rust unit/integration tests and desktop/mobile browser tests. The browser planner uses the same documented throughput formula as the CLI. Start the docs site with `npm run dev`.
+`npm test` runs Rust unit/integration tests and desktop/mobile browser tests. The browser calculator models one adaptive-throughput goal. Start the docs site with `npm run dev`.
 
 ## Deployment
 

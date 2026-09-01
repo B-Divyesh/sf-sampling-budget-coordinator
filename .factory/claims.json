@@ -29,7 +29,7 @@
   },
   {
     "id": "deploy-assertion",
-    "claim": "CLI assertions return stable exit codes 0, 2, and 3 and can emit valid JSON.",
+    "claim": "CLI plan and assertion commands emit valid JSON; assertions return stable exit codes 0, 2, and 3.",
     "where": "landing method and README usage",
     "test": "npm run test:claim -- @claim:deploy-assertion",
     "sandbox": "run the packaged command against bundled and invalid inputs; assert exact exit codes and parse stdout JSON"
@@ -37,9 +37,58 @@
   {
     "id": "unsupported-policy",
     "claim": "Unknown sampling processors are rejected instead of estimated.",
-    "where": "landing method and README supported configuration surface",
+    "where": "landing method and README supported collector configurations",
     "test": "npm run test:claim -- @claim:unsupported-policy",
-    "sandbox": "temporary collector config containing an unsupported sampling processor; assert exit 2 and an actionable error"
+    "sandbox": "temporary collector configuration containing an unsupported sampling processor; assert exit 2 and an actionable error"
+  },
+  {
+    "id": "supported-sampler-models",
+    "claim": "The CLI models adaptive-throughput, adaptive-percentage, probabilistic, always-sample, and top-level probabilistic sampler policies.",
+    "where": "README supported collector configurations",
+    "test": "npm run test:claim -- @claim:supported-sampler-models",
+    "sandbox": "temporary collector configurations for every documented sampler type; parse JSON reports and assert their documented estimates and warnings"
+  },
+  {
+    "id": "configuration-errors",
+    "claim": "Missing trace-pipeline wiring returns an error instead of an estimate.",
+    "where": "README supported collector configurations",
+    "test": "npm run test:claim -- @claim:configuration-errors",
+    "sandbox": "temporary configuration without service.pipelines.traces; assert exit 2 and an actionable message"
+  },
+  {
+    "id": "scenario-assertion",
+    "claim": "Assertions check every repeated or comma-separated replica scenario against budget plus tolerance.",
+    "where": "landing method, README usage",
+    "test": "npm run test:claim -- @claim:scenario-assertion",
+    "sandbox": "run repeated and comma-separated scenarios; assert each JSON scenario row and exit 3 when any row exceeds the allowed volume"
+  },
+  {
+    "id": "assumption-reporting",
+    "claim": "Reports state steady-state, even-load, and conditional-rule assumptions in human and JSON output.",
+    "where": "landing calculator note, README usage",
+    "test": "npm run test:claim -- @claim:assumption-reporting",
+    "sandbox": "run a conditional always-sample fixture in both output modes; assert all three assumptions and the conditional warning"
+  },
+  {
+    "id": "default-tolerance",
+    "claim": "The assertion tolerance defaults to 10 percent and can be overridden.",
+    "where": "README usage",
+    "test": "npm run test:claim -- @claim:default-tolerance",
+    "sandbox": "run assertions without and with --tolerance; assert 660 allowed spans/s by default and the overridden maximum"
+  },
+  {
+    "id": "upper-bound-without-input",
+    "claim": "Throughput-only audits work without an input rate and state that they use configured ceilings.",
+    "where": "README usage",
+    "test": "npm run test:claim -- @claim:upper-bound-without-input",
+    "sandbox": "omit --input on a throughput fixture; assert each ceiling result and the no-input assumption in JSON"
+  },
+  {
+    "id": "plan-report",
+    "claim": "Plans report each scenario's fleet cap, estimated export, and proportional local-goal recommendation.",
+    "where": "README usage",
+    "test": "npm run test:claim -- @claim:plan-report",
+    "sandbox": "run two non-sample throughput fixtures; assert every scenario ceiling/export and the proportional recommendation rows"
   },
   {
     "id": "mit-license",
