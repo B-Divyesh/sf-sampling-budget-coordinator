@@ -63,3 +63,9 @@ No line exceeds 22 words. No copy uses the banned marketing terms.
 | Incoming spans before sampling | incoming volume |
 | Automated deploy check | assertion |
 | Example environment | demo |
+
+## Round 2 README and catalog check
+
+The README installation section now ends after the two install commands. The internal package-version and factory publishing sentences were removed. A repository search finds no remaining “Factory release automation,” “package starts,” “sampling economics,” “Fleet ledger,” or “Multiply where OTel does” copy.
+
+The catalog description is “Keep OpenTelemetry collector fleets within one span budget as replicas change.” It has 11 words, begins with a verb, and is 78 characters before its newline. Its behavior is covered by the `plan-report` and `scenario-assertion` claims.
