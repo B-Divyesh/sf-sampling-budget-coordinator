@@ -1,30 +1,60 @@
-# Sampling Budget Coordinator — review 1 handoff
+# Sampling Budget Coordinator — polish round 1 handoff
 
 ## Outcome
 
-**FAIL** on 2026-08-30 against commit `0109f15588ed951b1c44b3ecfda739109891d7cf` and the live production site.
+All findings in `.factory/review-1.md` and the earlier review history are repaired in `4d9a90a4afb8201324404c037da1b85402ce8041` (`fix: complete adversarial review polish`). It is pushed to `origin/main`, CI run `33546559112` passed, and the static site was deployed directly to the permitted `sf-sampling-budget-coordinator` production target.
 
-The cold first screen, one-click browser demo, CLI temp-directory demo, storage/network isolation, offline reload, declared claims, build, accessibility, links, metadata, 404 response, and earlier regression fixes all passed. The review records 18 remaining findings: eight unlisted or under-declared product claims and ten copy/navigation issues. No product code was changed.
+The live site now serves the repair at <https://sampling-budget-coordinator.sociobot.in/>. A cold production check passed after deployment.
 
-See `.factory/review-1.md` for exact quotes, evidence, word counts, rewrites, and fixes.
+## What changed
 
-## Verification performed
+- Added seven executable claim contracts for supported sampler models, configuration errors, scenario syntax, assumptions, default tolerance, no-input audits, and general plan reports.
+- Narrowed browser-calculator copy instead of making an unjustified browser/CLI parity promise.
+- Rewrote all recorded plain-language, heading, terminology, control-label, title, metadata, and 404 issues.
+- Added route-entry h1 focus for same-origin navigation and browser Back, with a regression test.
+- Updated the catalog description and copy audit.
 
-- Fresh Chromium at 390 × 844 and 1440 × 900; first screen captured before scrolling.
-- Live demo mutation, reset, exit, cookies/localStorage/sessionStorage/IndexedDB inspection, request-origin log, and offline service-worker reload.
-- `sbc demo` from an empty temporary working directory.
-- All seven `.factory/claims.json` commands, separately, from a clean clone at the reviewed commit: all passed.
-- `npm test`: passed 6 unit tests, 5 CLI integration tests, 1 doctest, and 37 Playwright tests; 9 intentional duplicate-project skips.
-- `npm run typecheck`, `npm run lint`, and `npm run build`: passed.
-- `/opt/fleet/lib/verify-url.sh`: passed against production.
-- Live Playwright axe scan on landing, demo, Privacy, Terms, and 404: zero violations.
-- Link/status crawl: all intended links returned 200; a made-up route returned the styled 404 with HTTP 404.
-- Clean production rebuild compared with live: all 19 public files matched byte-for-byte.
+See `.factory/polish-1.md` for the complete finding-to-change-to-evidence map.
 
-## Remaining work
+## Verification
 
-- Add or narrow the claims in F-1-1 through F-1-8.
-- Apply the plain-language and terminology fixes in F-1-9 through F-1-16.
-- Move focus to the route h1 after in-site navigation and Back (F-1-17).
-- Rename the 404 h1 to “Page not found” (F-1-18).
-- Rerun the full review from scratch. PASS requires zero findings.
+Fresh dependencies were installed with `npm ci`. Every command declared in `.factory/claims.json` passed independently:
+
+- `demo-sandbox`, `local-privacy`, `offline-reload`, `sample-budget`, `deploy-assertion`, `unsupported-policy`, and `mit-license`.
+- `supported-sampler-models`, `configuration-errors`, `scenario-assertion`, `assumption-reporting`, `default-tolerance`, `upper-bound-without-input`, and `plan-report`.
+
+Additional local gates passed:
+
+```sh
+npm test                 # 46 passed; 16 intentional project-specific skips
+npm run typecheck
+npm run lint
+npm run build            # emits dist/site
+cargo package --locked --allow-dirty
+```
+
+The production build is 4.61 kB JS (2.06 kB gzip) and 13.17 kB CSS (3.64 kB gzip). The static bundle remains under the product budgets.
+
+Live evidence:
+
+- `/opt/fleet/lib/verify-url.sh https://sampling-budget-coordinator.sociobot.in/ /tmp/sbc-live-verify` passed: HTTP 200, title, `lang=en`, one h1, main landmark, image alt text, labeled buttons, and no console errors.
+- Live Playwright at 390 px verified cold first-screen copy, demo banner/reset, demo isolation path, route-focus on Back, and zero serious/critical axe violations.
+- An unknown live route returned HTTP 404 with “Page not found.”
+- Evidence screenshots: `/tmp/sbc-live-verify/screenshot-desktop.png` and `/tmp/sbc-live-verify/screenshot-mobile.png`.
+
+The standalone `@axe-core/cli` launcher cannot locate Chrome in this container. The equivalent installed `@axe-core/playwright` scan ran locally across every route and live on the demo route with zero serious/critical violations.
+
+## Run and deploy
+
+```sh
+npm ci
+npm test
+npm run build
+cargo run -- demo
+```
+
+Deploy `dist/site/` with the factory static-work-order target `sf-sampling-budget-coordinator`. No runtime service, secret, user account, payment, or analytics integration is required.
+
+## Known gaps
+
+None. The temporary deployment credential file generated by the deployment CLI was deleted and was never committed.
