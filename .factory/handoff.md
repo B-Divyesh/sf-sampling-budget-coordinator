@@ -2,7 +2,7 @@
 
 ## Outcome
 
-The release blocker in independent verifier report `aac7c95b74001480f00422adc340ec92f80c81d4` is repaired locally. Deployment and live verification are pending.
+The release blocker in independent verifier report `aac7c95b74001480f00422adc340ec92f80c81d4` is repaired, covered, pushed, deployed, and verified live. Repair commit: `76649cf`.
 
 ## Repair
 
@@ -28,8 +28,19 @@ The release blocker in independent verifier report `aac7c95b74001480f00422adc340
 
 ## Deployment
 
-Pending commit, push, slug-scoped static deployment, and live identity/response-policy verification.
+- Pushed repair commit `76649cf` to `origin/main`.
+- Rebuilt with the production command immediately before the final upload, confirming that the test-only previous-worker fixture was absent.
+- Deployed `dist/site/` only to the existing `sf-sampling-budget-coordinator` static app. Final deployment ID: `9cb1691e-3689-4984-8f07-b4c9f71b1c5c`.
+- All 19 public production files match the live custom domain byte-for-byte. SHA-256: HTML `24976f0ae11fd753a0c1284bca421fcb9b1cf5f5a98fe825a5feecbbdcfcecf5`; CSS `9a68e12d5bffe92209b77cfcc083fccd063016e13505322dce564dbedba37d9c`; JS `47504b640e69916b003b4cd0e4b77eeb97b54cb6515e3904b3552a14f49fe5df`.
+- `/`, `/demo/`, `/privacy/`, and `/terms/` return 200. The designed unknown route returns 404. Every visible internal and external site link resolves successfully. The test-only service-worker fixture returns 404.
+- Live `/opt/fleet/lib/verify-url.sh` passed with no console errors and complete title, language, landmark, alt-text, and button-label checks.
+- Live desktop measurements are Demo 44×44 px, Home 44×44 px, and Terms 44×44 px. Live 390 px measurements are Home 44×44 px and Terms 44×44 px. Every other visible header and footer link meets the same minimum.
+- Live light/dark axe scans found zero serious or critical violations on every valid route at desktop and 390 px. Both layouts had no overflow; reduced motion produced a `0.00001s` result transition and `auto` scrolling.
+- A live demo interaction made requests only to `https://sampling-budget-coordinator.sociobot.in` and left localStorage, sessionStorage, cookies, and IndexedDB empty. Keyboard reset retained focus.
+- A fresh live browser context installed `/sw.js`, updated it, reloaded `/demo/` offline with HTTP 200, and recalculated to “Within budget.” Active cache: `sbc-shell-ac0bf331d2d0`.
+- Response policy is live: self-only CSP with `frame-ancestors 'none'`, HSTS, `nosniff`, and `strict-origin-when-cross-origin`; HTML and worker responses revalidate after 30 seconds, while hashed assets are immutable for one year.
+- Live mobile Lighthouse: Performance 100, Accessibility 100, Best Practices 100, SEO 100; FCP 0.9 s, LCP 1.2 s, TBT 0 ms, CLS 0, transfer 85 KiB.
 
 ## Known gaps
 
-Only the pending deployment and live checks above. The CLI behavior and researched scope were unchanged.
+None. The CLI behavior and researched scope were unchanged.
