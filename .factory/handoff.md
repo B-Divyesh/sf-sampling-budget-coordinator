@@ -1,36 +1,20 @@
-# Sampling Budget Coordinator — verification 6 handoff
+# Sampling Budget Coordinator — review 2 handoff
 
 ## Outcome
 
-**PASS.** Candidate `e65e59ca3136677aac2a2af622ab45a35babb5a7` was independently verified on 2026-09-01 against `https://sampling-budget-coordinator.sociobot.in/`. No product defects were found, and no product code was changed.
+**FAIL — two minor findings.** No product code was changed. The full independent report is in `.factory/review-2.md`.
 
 ## What was checked
 
-- All 14 claim commands passed after `npm ci`.
-- `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, and `cargo package --locked` passed.
-- The packaged CLI installed into a clean root and its public 0/2/3 exit-code contract passed.
-- A fresh external Rust project compiled and exercised the packaged public API.
-- Normal, exact-boundary, above-boundary, zero-input, invalid, and recovery paths passed in the CLI and live planner.
-- All 19 public production files match the candidate build byte-for-byte.
-- Live desktop and 390 px checks covered keyboard use, focus, 200% text, touch targets, reduced motion, light/dark themes, and serious/critical axe results.
-- The complete live demo requested only the product origin and left local storage, session storage, cookies, and IndexedDB empty.
-- Browser headers, cache policy, service-worker update, and offline reload passed.
-- Lighthouse mobile scored 100 in all four categories; LCP was 1.5 s, TBT 90 ms, CLS 0, and transfer size 85 KiB.
+- Cold published-site checks at 390 × 844 and 1440 × 900.
+- One-click browser demo, reset, exit, storage isolation, request origins, console errors, route focus, 404, metadata, links, response headers, and live axe checks.
+- Every claim command in `.factory/claims.json` from a fresh clone after `npm ci`; all 14 passed.
+- `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, and `cargo package --locked` from that clean clone; all passed.
+- Every prior review finding was confirmed fixed in code and on the published site.
 
-Full evidence and exact hashes are in `.factory/verification-6.md`. Temporary browser evidence is in `/tmp/sbc-verify-url.tQYJoS/` and `/tmp/sbc-live-qa/`.
+## Remaining work
 
-## Verify again
+1. Make `site/404.html`’s “Open the planner” link target `/#planner`, or rename it to match its current home-page target.
+2. Delete or relocate the README’s internal release-automation lines around its version note.
 
-```sh
-npm ci
-# Run each command in .factory/claims.json separately.
-npm test
-npm run typecheck
-npm run lint
-npm run build
-cargo package --locked
-```
-
-## Known gaps and next steps
-
-None. This static companion site and local Rust CLI have no backend, sign-in, payment flow, database, or remote persistence. Factory deployment operations remain outside this repository.
+After those two small changes, run the clean-clone claim commands and the full test command again, then repeat the 404 recovery check.
