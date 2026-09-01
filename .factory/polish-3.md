@@ -39,5 +39,6 @@ The first-screen action now points to `/?demo=1`, which immediately enters canon
 - Production deployment: `https://sampling-budget-coordinator.sociobot.in/` and `https://blue-coast-03129da0f.7.azurestaticapps.net/`.
 - `/opt/fleet/lib/verify-url.sh` passed with no console errors; evidence: `/tmp/sbc-polish3-final-live.2nxpp7/verify.json`.
 - Cold live Playwright + Axe checks passed at 1440 px and 390 px for `/`, `/demo/`, `/privacy/`, `/terms/`, and `/404.html`; it also verified the query demo, reset, zero storage, same-origin requests, offline reload, route focus, and 404 recovery. Screenshot evidence: `/tmp/sbc-polish3-final-live.2nxpp7/screenshot-desktop.png`, `/tmp/sbc-polish3-final-live.2nxpp7/screenshot-mobile.png`, and `/tmp/sbc-polish3-final-live.2nxpp7/live-demo-mobile.png`.
+- Live Lighthouse mobile report: performance 100, accessibility 100, best practices 100, SEO 100; FCP 1,049 ms, LCP 1,433 ms, TBT 45 ms, CLS 0, transfer 87,010 bytes. Evidence: `/tmp/sbc-polish3-final-live.2nxpp7/lighthouse-mobile.json`.
 
 No blocking, major, minor, or earlier finding remains unresolved.

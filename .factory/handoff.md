@@ -42,6 +42,7 @@ Cold production evidence is at `/tmp/sbc-polish3-final-live.2nxpp7/`:
 - `verify.json` — expected title, `lang=en`, one h1, main landmark, complete alt text, labeled controls, and no console errors.
 - `screenshot-desktop.png`, `screenshot-mobile.png`, `live-demo-mobile.png` — visual checks.
 - A fresh live Playwright/Axe check found zero serious or critical violations on `/`, `/demo/`, `/privacy/`, `/terms/`, and `/404.html` at 1440 px and 390 px. It also passed `?demo=1` isolation/reset/storage, same-origin request, offline reload, route-focus, and 404 recovery checks.
+- `lighthouse-mobile.json` — Performance 100, Accessibility 100, Best Practices 100, SEO 100; LCP 1.43 s, CLS 0, TBT 45 ms, 87 KB transfer.
 
 ## Run and deploy
 
