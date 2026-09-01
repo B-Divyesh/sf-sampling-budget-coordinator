@@ -444,6 +444,13 @@ h3 { margin: 0; font-size: 1.15rem; letter-spacing: -0.02em; }
     --dots: rgba(246, 239, 217, 0.11);
     --rule: #f6efd9;
   }
+
+  :root:not([data-theme="light"]) .wordmark-mark,
+  :root:not([data-theme="light"]) .primary-link,
+  :root:not([data-theme="light"]) .primary-button,
+  :root:not([data-theme="light"]) .code-panel .bar { color: #111815; }
+
+  :root:not([data-theme="light"]) .eyebrow { color: var(--signal); }
 }
 
 @media (max-width: 820px) {

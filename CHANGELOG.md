@@ -19,6 +19,7 @@ All notable changes follow Keep a Changelog. This project uses semantic versioni
 ### Fixed
 
 - Reject reports whose derived numeric values exceed the finite JSON range.
+- Keep vermilion controls readable when the operating system starts in dark mode.
 
 ## [0.1.0] - 2026-08-28
 

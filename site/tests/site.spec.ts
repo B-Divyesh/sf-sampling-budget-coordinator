@@ -43,6 +43,15 @@ test("dark treatment stays accessible on every route and loads without errors", 
   expect(errors).toEqual([]);
 });
 
+test("system dark preference keeps every route accessible", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")), path).toEqual([]);
+  }
+});
+
 test("offline state explains that local planning still works", async ({ page, context }) => {
   await page.goto("/");
   await context.setOffline(true);
