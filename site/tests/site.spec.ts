@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 
 test("planner recalculates the fleet and generates an assertion", async ({ page }) => {
@@ -186,9 +186,9 @@ test("standalone header and footer navigation targets are at least 44 by 44 CSS 
   }
 });
 
-test("a new service worker discards an old shell cache", async ({ browser }, testInfo) => {
+test("a new service worker discards an old shell cache", async ({ freshBrowser }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "service-worker upgrade is covered once in Chromium");
-  const context = await browser.newContext();
+  const context = await freshBrowser.newContext();
   const page = await context.newPage();
   const oldCache = "sbc-shell-previous-release";
   await page.goto("/");

@@ -21,4 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm test
+      # Run the full gate twice in the fresh Actions checkout. Browser tests
+      # use an isolated Playwright worker per test, so a crashed Chromium
+      # process is retried in a new process instead of invalidating the suite.
+      - run: npm run test:repeat

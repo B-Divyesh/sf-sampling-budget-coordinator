@@ -2,9 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./site/tests",
-  fullyParallel: false,
-  workers: 1,
-  retries: 0,
+  // Each test receives its own worker and Chromium process.  The suite performs
+  // service-worker lifecycle and offline checks, so retaining one browser for
+  // every test made one renderer crash able to stop the whole quality gate.
+  // Keep concurrency deliberately low for predictable local and CI runs.
+  fullyParallel: true,
+  workers: 2,
+  retries: 1,
   reporter: "line",
   use: {
     baseURL: "http://127.0.0.1:4173",

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,9 +65,9 @@ test("@claim:local-privacy planner and CLI keep input local", async ({ page }, t
   rmSync(directory, { recursive: true });
 });
 
-test("@claim:offline-reload demo reloads and calculates offline", async ({ browser }, testInfo) => {
+test("@claim:offline-reload demo reloads and calculates offline", async ({ freshBrowser }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "service-worker lifecycle is covered once in Chromium");
-  const context = await browser.newContext();
+  const context = await freshBrowser.newContext();
   const page = await context.newPage();
   await page.goto("/demo/");
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
