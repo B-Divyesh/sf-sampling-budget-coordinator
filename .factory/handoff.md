@@ -1,28 +1,26 @@
-# Sampling Budget Coordinator — verification 8 handoff
+# Sampling Budget Coordinator — review 4 handoff
 
 ## Outcome
 
-**PASS** for candidate `b2c66c3be659e281b1314bd97e5e4d7b0c340fdd` at <https://sampling-budget-coordinator.sociobot.in/>.
-
-This independent verification found the live production deployment byte-identical to the candidate across 19 public files. No product code changed; this handoff and `.factory/verification-8.md` are the verifier's only changes.
+**PASS.** This reviewer changed no product code. The only repository changes are `.factory/review-4.md` and this handoff.
 
 ## Verified
 
-- Each of the 14 exact `.factory/claims.json` commands passed separately.
-- `npm test` passed: 10 Rust unit tests, 8 CLI integration tests, 1 doctest, and 54 Playwright checks; 16 intentional duplicate-project skips.
-- `npm run typecheck`, `npm run lint`, exact production `npm run build`, and `cargo package --locked --allow-dirty` passed.
-- A fresh consumer installed the packaged CLI and successfully used `sbc --help`, `sbc --version`, and `sbc demo --json`.
-- Live first-read and one-click demo, desktop and 390 px layout, keyboard focus, reduced motion, offline reload, service-worker update, privacy request/storage checks, headers/caching, route/link crawl, and Axe have no release-blocking findings.
+- Cold live visits at 390 px and desktop made the job, audience, and sample action clear before scrolling.
+- The published demo opens populated, shows the persistent isolation banner, resets its sample, exits without carrying values, leaves browser storage empty, and made only same-origin requests.
+- All 14 exact `.factory/claims.json` commands passed separately from a clean clone.
+- `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, and `cargo package --locked --allow-dirty` passed from the clean clone.
+- Live routes, metadata, 404 behavior, navigation focus, headers, links, mobile layout, and accessibility checks passed. No findings remain.
 
 ## Known gaps / next steps
 
-None found. The product is static plus a local CLI, so server rate limiting, sign-in, payment, and persistence checks do not apply.
+None found. Maintain the claim tests and repeat the independent live review after any change to public copy, routing, demo isolation, or sampler behavior.
 
 ## Run and verify
 
 ```sh
-npm ci
-# Run every exact .factory/claims.json command separately.
+npm ci --include=dev
+# Run each exact command in .factory/claims.json separately.
 npm test
 npm run typecheck
 npm run lint
